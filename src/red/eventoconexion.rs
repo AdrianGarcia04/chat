@@ -4,9 +4,8 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq)]
 pub enum EventoConexion {
     EmpiezaConexion,
-    EstablecerNombre,
     Mensaje,
-    TerminarConexion,
+    TerminaConexion,
     EventoInvalido,
 }
 
@@ -16,9 +15,8 @@ impl FromStr for EventoConexion {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "EmpiezaConexion" => Ok(EventoConexion::EmpiezaConexion),
-            "EstablecerNombre" => Ok(EventoConexion::EstablecerNombre),
             "Mensaje" => Ok(EventoConexion::Mensaje),
-            "TerminarConexion" => Ok(EventoConexion::TerminarConexion),
+            "TerminaConexion" => Ok(EventoConexion::TerminaConexion),
             "EventoInvalido" => Ok(EventoConexion::EventoInvalido),
             _ => Err(()),
         }
