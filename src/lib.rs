@@ -2,10 +2,10 @@ pub mod red;
 
 #[cfg(test)]
 mod tests {
-    use red::{servidor::Servidor, eventoservidor::EventoServidor, eventoconexion:: EventoConexion};
+    use red::{servidor::Servidor, eventoservidor::EventoServidor, eventoconexion:: EventoConexion,
+            util};
     use std::thread;
     use std::net::{TcpStream};
-    use std::io::{Read, Write};
 
     #[test]
     fn test_servidor_arriba() {
@@ -20,13 +20,10 @@ mod tests {
         let evento = escucha.recv();
         assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
 
-        let mut cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
+        let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
-        let evento = EventoConexion::TerminaConexion.to_string();
-        let bytes = evento.into_bytes();
-        cliente.write(&bytes[..]).expect("Error al escribir");
-        cliente.flush().expect("Error al enviar");
+        util::mandar_evento(&cliente, EventoConexion::TerminaConexion);
 
         let evento = escucha.recv();
         assert_eq!(evento, Ok(EventoServidor::ServidorAbajo));
@@ -43,70 +40,50 @@ mod tests {
             servidor.comenzar();
         });
 
-        let mut cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
+        let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
-        let evento = EventoConexion::TerminaConexion.to_string();
-        let bytes = evento.into_bytes();
-        cliente.write(&bytes[..]).unwrap();
-        cliente.flush().unwrap();
+        util::mandar_evento(&cliente, EventoConexion::TerminaConexion);
 
         let evento = escucha.recv();
         assert_eq!(evento, Ok(EventoServidor::ServidorAbajo));
 
         TcpStream::connect("127.0.0.1:".to_string() + puerto).expect("Error al conectar");
+        // Should panic
     }
 
     #[test]
     fn test_acepta_conexiones() {
         let puerto = "7878";
         let mut servidor = Servidor::new(puerto);
-
         let escucha = servidor.nuevo_escucha();
+
+        thread::spawn(move || {
+            servidor.comenzar();
+        });
+
+
         let handle = thread::spawn(move || {
             let evento = escucha.recv();
             assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
 
-            let mut cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
+            let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
                 .expect("Error al conectar");
 
-            let evento = EventoConexion::EmpiezaConexion.to_string();
-            let bytes = evento.into_bytes();
-            cliente.write(&bytes[..]).expect("Error al escribir");
-            cliente.flush().expect("Error al enviar");
+            util::mandar_evento(&cliente, EventoConexion::EmpiezaConexion);
 
-            let mut buffer = [0; 180];
-            match cliente.read(&mut buffer) {
-                Ok(count) => {
-                    if count > 0 {
-                        let mensaje: Vec<u8> = buffer.to_vec().into_iter()
-                            .filter(|&x| x != 00000000 as u8).collect();
-                        let mensaje = String::from_utf8(mensaje).unwrap();
-                        assert_eq!(mensaje, "EmpiezaConexion");
-                    }
-                },
-                _ => {
-                }
-            }
+            let evento = util::obtener_evento_conexion(&cliente);
+            assert_eq!(evento, EventoConexion::EmpiezaConexion);
 
-            let nombre = String::from("test");
-            let bytes = nombre.into_bytes();
-            cliente.write(&bytes[..]).unwrap();
-            cliente.flush().unwrap();
+            util::mandar_mensaje(&cliente, String::from("test"));
 
             let evento = escucha.recv();
             assert_eq!(evento, Ok(EventoServidor::NuevoCliente));
 
-            let evento = EventoConexion::TerminaConexion.to_string();
-            let bytes = evento.into_bytes();
-            cliente.write(&bytes[..]).unwrap();
-            cliente.flush().unwrap();
+            util::mandar_evento(&cliente, EventoConexion::TerminaConexion);
+
             let evento = escucha.recv();
             assert_eq!(evento, Ok(EventoServidor::ServidorAbajo));
-        });
-
-        thread::spawn(move || {
-            servidor.comenzar();
         });
 
         handle.join().unwrap();
