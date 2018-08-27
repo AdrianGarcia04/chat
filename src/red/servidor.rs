@@ -103,6 +103,16 @@ impl Servidor {
             drop(cliente);
         }
     }
+
+    fn esparcir_mensaje_a_clientes(&mut self, mensaje: String, direccion_socket: SocketAddr) {
+        let mensaje = &mensaje[..];
+        for cliente in self.clientes.iter_mut() {
+            if cliente.direccion_socket() != direccion_socket {
+                util::mandar_evento(&cliente.socket(), EventoConexion::Mensaje);
+                util::mandar_mensaje(&cliente.socket(), mensaje.to_string());
+            }
+        }
+    }
 }
 
 pub fn obtener_reaccion(socket: TcpStream, direccion_socket: SocketAddr) -> Box<Fn(&mut Servidor) + Send> {
@@ -116,9 +126,10 @@ pub fn obtener_reaccion(socket: TcpStream, direccion_socket: SocketAddr) -> Box<
             })
         },
         EventoConexion::Mensaje => {
-            Box::new(move |_servidor: &mut Servidor| {
-                // TODO: Mandar mensajes a los clientes
-                ()
+            Box::new(move |servidor: &mut Servidor| {
+                util::mandar_evento(&socket, EventoConexion::Mensaje);
+                let mensaje = util::obtener_mensaje_conexion(&socket);
+                servidor.esparcir_mensaje_a_clientes(mensaje, direccion_socket);
             })
         },
         EventoConexion::TerminaConexion => {

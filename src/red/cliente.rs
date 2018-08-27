@@ -22,6 +22,14 @@ impl Cliente {
         self.socket.shutdown(Shutdown::Both).expect("Error al cerrar el socket");
     }
 
+    pub fn direccion_socket(&self) -> SocketAddr {
+        self.direccion_socket
+    }
+
+    pub fn socket(&self) -> &TcpStream {
+        &self.socket
+    }
+
 }
 
 impl Clone for Cliente {
@@ -32,4 +40,14 @@ impl Clone for Cliente {
             direccion_socket: self.direccion_socket.clone(),
         }
     }
+ }
+
+ impl PartialEq for Cliente {
+     fn eq(&self, other: &Cliente) -> bool {
+         self.direccion_socket == other.direccion_socket || self.nombre == other.nombre
+     }
+
+     fn ne(&self, other: &Cliente) -> bool {
+         self.direccion_socket != other.direccion_socket && self.nombre != other.nombre
+     }
  }

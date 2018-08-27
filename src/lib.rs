@@ -63,7 +63,7 @@ mod tests {
         });
 
 
-        let handle = thread::spawn(move || {
+        let hilo = thread::spawn(move || {
             let evento = escucha.recv();
             assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
 
@@ -86,7 +86,75 @@ mod tests {
             assert_eq!(evento, Ok(EventoServidor::ServidorAbajo));
         });
 
-        handle.join().unwrap();
+        hilo.join().unwrap();
+    }
+
+    #[test]
+    fn test_manda_mensajes() {
+        let puerto = "9090";
+        let mut servidor = Servidor::new(puerto);
+        let escucha1 = servidor.nuevo_escucha();
+        let escucha2 = servidor.nuevo_escucha();
+
+        thread::spawn(move || {
+            servidor.comenzar();
+        });
+
+
+        let _hilo1 = thread::spawn(move || {
+            let evento = escucha1.recv();
+            assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
+
+            let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
+                .expect("Error al conectar");
+
+            util::mandar_evento(&cliente, EventoConexion::EmpiezaConexion);
+
+            let evento = util::obtener_evento_conexion(&cliente);
+            assert_eq!(evento, EventoConexion::EmpiezaConexion);
+
+            util::mandar_mensaje(&cliente, String::from("cliente1"));
+
+            let evento = escucha1.recv();
+            assert_eq!(evento, Ok(EventoServidor::NuevoCliente));
+
+            util::mandar_evento(&cliente, EventoConexion::Mensaje);
+
+            let evento = util::obtener_evento_conexion(&cliente);
+            assert_eq!(evento, EventoConexion::Mensaje);
+
+            util::mandar_mensaje(&cliente, String::from("Mensaje del cliente 1"));
+        });
+
+        let _hilo2 = thread::spawn(move || {
+            let evento = escucha2.recv();
+            assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
+
+            let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
+                .expect("Error al conectar");
+
+            util::mandar_evento(&cliente, EventoConexion::EmpiezaConexion);
+
+            let evento = util::obtener_evento_conexion(&cliente);
+            assert_eq!(evento, EventoConexion::EmpiezaConexion);
+
+            util::mandar_mensaje(&cliente, String::from("cliente2"));
+
+            let evento = escucha2.recv();
+            assert_eq!(evento, Ok(EventoServidor::NuevoCliente));
+
+            let evento = util::obtener_evento_conexion(&cliente);
+            assert_eq!(evento, EventoConexion::Mensaje);
+
+            let mensaje = util::obtener_mensaje_conexion(&cliente);
+            assert_eq!(mensaje, "Mensaje del cliente 1");
+
+            util::mandar_evento(&cliente, EventoConexion::TerminaConexion);
+            let evento = escucha2.recv();
+        });
+
+        _hilo1.join().unwrap();
+        _hilo2.join().unwrap();
     }
 
 }
