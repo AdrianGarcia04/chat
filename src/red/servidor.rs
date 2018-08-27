@@ -1,7 +1,11 @@
-use super::{cliente::Cliente, eventoservidor::EventoServidor};
+use super::{cliente::Cliente, eventoservidor::EventoServidor, eventoconexion::EventoConexion};
 
 use std::net::{TcpStream, TcpListener, SocketAddr};
 use std::sync::mpsc;
+use std::time::Duration;
+use std::io::Read;
+
+const CHAR_NULL: u8 = 00000000;
 
 #[derive(Clone)]
 pub struct Servidor {
@@ -41,9 +45,10 @@ impl Servidor {
         escucha_tcp.set_nonblocking(true).expect("Error al inicializar el non-blocking");
         loop {
             if let Ok((mut socket, direccion_socket)) = escucha_tcp.accept() {
-                self.aceptar_cliente(&socket, direccion_socket);
-                self.anunciar_escuchas(EventoServidor::NuevoCliente);
-                println!("SERVIDOR: Nuevo cliente: {:?}", direccion_socket);
+                if self.aceptar_cliente(&mut socket, direccion_socket) {
+                    self.anunciar_escuchas(EventoServidor::NuevoCliente);
+                    println!("SERVIDOR: Nuevo cliente: {:?}", direccion_socket);
+                }
             }
         }
     }
@@ -64,9 +69,75 @@ impl Servidor {
         }
     }
 
-    fn aceptar_cliente(&mut self, socket: &TcpStream, address: SocketAddr) {
+    fn aceptar_cliente(&mut self, mut socket: &TcpStream, direccion_socket: SocketAddr) -> bool {
+        let mut nombre = String::new();
+
+        socket.set_read_timeout(Some(Duration::from_millis(100)))
+            .expect("Error al dar un limite de tiempo al socket");
+
+        let evento = obtener_evento_conexion(&mut socket);
+        match evento {
+            EventoConexion::EmpiezaConexion => {
+                nombre = obtener_mensaje_conexion(&mut socket);
+            },
+            _ => {
+                return false;
+            }
+        };
+
         let _socket = socket.try_clone().expect("Error al clonar socket");
-        let cliente = Cliente::new(None, None, Some(_socket), Some(address));
+        let cliente = Cliente::new(nombre, _socket, direccion_socket);
         self.clientes.push(cliente);
+
+        socket.set_read_timeout(None)
+            .expect("Error al dar un limite de tiempo al socket");
+        true
     }
+}
+
+pub fn obtener_evento_conexion(mut socket: &TcpStream) -> EventoConexion {
+    let mut buffer = [0; 180];
+    match socket.read(&mut buffer) {
+        Ok(count) => {
+            if count > 0 {
+                let mensaje = mensaje_de_buffer(&buffer);
+                if let Ok(evento) = mensaje.parse::<EventoConexion>() {
+                    evento
+                }
+                else {
+                    EventoConexion::EventoInvalido
+                }
+            }
+            else {
+                EventoConexion::EventoInvalido
+            }
+        },
+        _ => {
+            EventoConexion::EventoInvalido
+        }
+    }
+}
+
+pub fn obtener_mensaje_conexion(mut socket: &TcpStream) -> String {
+    let mut buffer = [0; 180];
+    match socket.read(&mut buffer) {
+        Ok(count) => {
+            if count > 0 {
+                mensaje_de_buffer(&buffer)
+            }
+            else {
+                String::new()
+            }
+        },
+        _ => {
+            String::new()
+        }
+    }
+}
+
+pub fn mensaje_de_buffer(buffer: &[u8; 180]) -> String {
+    let mensaje: Vec<u8> = buffer.to_vec().into_iter()
+        .filter(|&x| x != CHAR_NULL).collect();
+    let mensaje = String::from_utf8(mensaje).unwrap();
+    mensaje
 }
