@@ -1,4 +1,5 @@
-use super::{cliente::Cliente, eventoservidor::EventoServidor, eventoconexion::EventoConexion, util};
+use super::{cliente::Cliente, eventoservidor::EventoServidor, eventoconexion::EventoConexion,
+    sala::Sala, util};
 
 use std::net::{TcpStream, TcpListener, SocketAddr};
 use std::sync::mpsc;
@@ -10,9 +11,11 @@ pub struct Servidor {
     clientes: Vec<Cliente>,
     escuchas: Vec<mpsc::Sender<EventoServidor>>,
     aceptando_conexiones: bool,
+    salas: Vec<Sala>
 }
 
 impl Servidor {
+
 
     pub fn new(puerto: &str) -> Servidor {
         let direccion = format!("127.0.0.1:{}", puerto);
@@ -21,6 +24,7 @@ impl Servidor {
             clientes: Vec::new(),
             escuchas: Vec::new(),
             aceptando_conexiones: false,
+            salas: Vec::new(),
         }
     }
 
@@ -65,6 +69,7 @@ impl Servidor {
         self.matar_clientes();
         self.matar_escuchas();
         self.aceptando_conexiones = false;
+        self.anunciar_escuchas(EventoServidor::ServidorAbajo);
     }
 
     pub fn nuevo_escucha(&mut self) -> mpsc::Receiver<EventoServidor> {
@@ -77,6 +82,7 @@ impl Servidor {
         for escucha in &self.escuchas {
             &escucha.send(evento.clone());
         }
+        println!("{:?}", evento);
     }
 
     fn aceptar_cliente(&mut self, mut socket: &TcpStream, direccion_socket: SocketAddr) -> bool {
@@ -107,11 +113,22 @@ impl Servidor {
     fn esparcir_mensaje_a_clientes(&mut self, mensaje: String, direccion_socket: SocketAddr) {
         let mensaje = &mensaje[..];
         for cliente in self.clientes.iter_mut() {
-            if cliente.direccion_socket() != direccion_socket {
-                util::mandar_evento(&cliente.socket(), EventoConexion::Mensaje);
-                util::mandar_mensaje(&cliente.socket(), mensaje.to_string());
+            util::mandar_evento(&cliente.socket(), EventoConexion::Mensaje);
+            util::mandar_mensaje(&cliente.socket(), mensaje.to_string());
+        }
+    }
+
+    fn cambiar_sala(&mut self, socket: &TcpStream, nombre_sala: String) {
+        for sala in self.salas.iter_mut() {
+            if sala.nombre() == nombre_sala {
+                sala.agregar_miembro(&socket);
             }
         }
+    }
+
+    fn crear_sala(&mut self, socket: &TcpStream, nombre_sala: String) {
+        let mut sala = Sala::new(nombre_sala);
+        sala.agregar_miembro(&socket);
     }
 }
 
@@ -134,6 +151,21 @@ pub fn obtener_reaccion(socket: TcpStream, direccion_socket: SocketAddr) -> Box<
         },
         EventoConexion::TerminaConexion => {
             Box::new(move |servidor: &mut Servidor| servidor.detener())
+        },
+        EventoConexion::CambiarSala => {
+            Box::new(move |servidor: &mut Servidor| {
+                util::mandar_evento(&socket, EventoConexion::CambiarSala);
+                let sala = util::obtener_mensaje_conexion(&socket);
+                servidor.cambiar_sala(&socket, sala);
+            })
+        },
+        EventoConexion::NuevaSala => {
+            Box::new(move |servidor: &mut Servidor| {
+                util::mandar_evento(&socket, EventoConexion::NuevaSala);
+                let nombre_sala = util::obtener_mensaje_conexion(&socket);
+                servidor.crear_sala(&socket, nombre_sala);
+                servidor.anunciar_escuchas(EventoServidor::NuevaSala);
+            })
         },
         _ => {
             Box::new(move |_servidor: &mut Servidor| () )
