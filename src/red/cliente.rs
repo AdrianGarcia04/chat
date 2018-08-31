@@ -22,12 +22,20 @@ impl Cliente {
         self.socket.shutdown(Shutdown::Both).expect("Error al cerrar el socket");
     }
 
+    pub fn nombre(&self) -> &str {
+        &self.nombre[..]
+    }
+
     pub fn direccion_socket(&self) -> SocketAddr {
         self.direccion_socket
     }
 
     pub fn socket(&self) -> &TcpStream {
         &self.socket
+    }
+
+    pub fn clonar_socket(&self) -> TcpStream {
+        self.socket.try_clone().expect("Error al clonar socket")
     }
 
 }
