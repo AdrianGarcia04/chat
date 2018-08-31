@@ -23,3 +23,17 @@ impl Sala {
         self.miembros.push(socket_clon);
     }
 }
+
+impl Clone for Sala {
+     fn clone(&self) -> Self {
+        let mut miembros = Vec::new();
+        for miembro in self.miembros.iter() {
+            let copia = miembro.try_clone().expect("Error al clonar");
+            miembros.push(copia);
+        }
+        Sala {
+            nombre: self.nombre.clone(),
+            miembros: miembros,
+        }
+    }
+ }
