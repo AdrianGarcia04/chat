@@ -4,3 +4,11 @@ version = "0.1.0"
 authors = ["Adrián García <adrian.garcia04@ciencias.unam.mx>"]
 
 [dependencies]
+
+[[bin]]
+name = "servidor"
+path = "src/servidor.rs"
+
+[[bin]]
+name = "cliente"
+path = "src/cliente.rs"
