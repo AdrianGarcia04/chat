@@ -17,8 +17,8 @@ pub struct Servidor {
 impl Servidor {
 
 
-    pub fn new(puerto: &str) -> Servidor {
-        let direccion = format!("127.0.0.1:{}", puerto);
+    pub fn new(ip: String, puerto: String) -> Servidor {
+        let direccion = format!("{}:{}", ip, puerto);
         Servidor {
             direccion: direccion,
             clientes: Vec::new(),
