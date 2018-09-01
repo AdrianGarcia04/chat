@@ -2,7 +2,7 @@ use super::{eventoconexion::EventoConexion};
 use std::net::{TcpStream};
 use std::io::{Read, Write};
 
-const CHAR_NULL: u8 = 00000000;
+pub const CHAR_NULL: u8 = 00000000;
 
 pub fn mensaje_de_buffer(buffer: &[u8; 180]) -> String {
     let mensaje: Vec<u8> = buffer.to_vec().into_iter()
