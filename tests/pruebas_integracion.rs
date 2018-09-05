@@ -3,59 +3,63 @@ extern crate chat;
 use chat::red::{servidor::Servidor, eventoservidor::EventoServidor, eventoconexion:: EventoConexion,
         util};
 use std::thread;
-use std::net::{TcpStream};
+use std::net::TcpStream;
 
 #[test]
-fn test_acepta_conexiones() {
+fn t1_acepta_conexiones() {
     let puerto = "7878";
     let mut servidor = Servidor::new("localhost", puerto);
     let escucha = servidor.nuevo_escucha();
 
-    thread::spawn(move || {
+    let hilo_servidor = thread::Builder::new().name("t1-servidor".into());
+    let hilo_cliente = thread::Builder::new().name("t1-cliente".into());
+
+    hilo_servidor.spawn(move || {
         servidor.comenzar();
-    });
+    }).unwrap();
 
-
-    thread::spawn(move || {
+    hilo_cliente.spawn(move || {
         let evento = escucha.recv();
         assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
+        let evento = util::obtener_evento_conexion(&cliente);
+        assert_eq!(evento, EventoConexion::EmpiezaConexion);
+
         util::mandar_mensaje(&cliente, String::from("nombre_test"));
         let evento = escucha.recv();
         assert_eq!(evento, Ok(EventoServidor::NuevoCliente));
-
-        util::mandar_evento(&cliente, EventoConexion::TerminaConexion);
-
-        let evento = escucha.recv();
-        assert_eq!(evento, Ok(EventoServidor::ServidorAbajo));
-    });
+    }).unwrap();
 }
 
 #[test]
-fn test_manda_mensajes() {
+fn t2_manda_mensajes() {
     let puerto = "9090";
     let mut servidor = Servidor::new("localhost", puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
 
-    thread::spawn(move || {
+    let hilo_servidor = thread::Builder::new().name("t2-servidor".into());
+    let hilo_cliente1 = thread::Builder::new().name("t2-cliente1".into());
+    let hilo_cliente2 = thread::Builder::new().name("t2-cliente2".into());
+
+    hilo_servidor.spawn(move || {
         servidor.comenzar();
-    });
+    }).unwrap();
 
-
-    thread::spawn(move || {
+    hilo_cliente1.spawn(move || {
         let evento = escucha1.recv();
         assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
-        util::mandar_evento(&cliente, EventoConexion::EmpiezaConexion);
+        let evento = util::obtener_evento_conexion(&cliente);
+        assert_eq!(evento, EventoConexion::EmpiezaConexion);
 
-        util::mandar_mensaje(&cliente, String::from("nombre_test"));
+        util::mandar_mensaje(&cliente, String::from("cliente1_test"));
         let evento = escucha1.recv();
         assert_eq!(evento, Ok(EventoServidor::NuevoCliente));
 
@@ -65,16 +69,19 @@ fn test_manda_mensajes() {
         assert_eq!(evento, EventoConexion::Mensaje);
 
         util::mandar_mensaje(&cliente, String::from("Mensaje del cliente 1"));
-    });
+    }).unwrap();
 
-    thread::spawn(move || {
+    hilo_cliente2.spawn(move || {
         let evento = escucha2.recv();
         assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
-        util::mandar_mensaje(&cliente, String::from("nombre_test"));
+        let evento = util::obtener_evento_conexion(&cliente);
+        assert_eq!(evento, EventoConexion::EmpiezaConexion);
+
+        util::mandar_mensaje(&cliente, String::from("cliente2_test"));
         let evento = escucha2.recv();
         assert_eq!(evento, Ok(EventoServidor::NuevoCliente));
 
@@ -83,29 +90,31 @@ fn test_manda_mensajes() {
 
         let mensaje = util::obtener_mensaje_conexion(&cliente);
         assert_eq!(mensaje, "Mensaje del cliente 1");
-
-        util::mandar_evento(&cliente, EventoConexion::TerminaConexion);
-        let evento = escucha2.recv();
-        assert_eq!(evento, Ok(EventoServidor::NuevoCliente));
-    });
+    }).unwrap();
 }
 
 #[test]
-fn test_crea_salas() {
+fn t3_crea_salas() {
     let puerto = "7070";
     let mut servidor = Servidor::new("localhost", puerto);
     let escucha = servidor.nuevo_escucha();
 
-    thread::spawn(move || {
-        servidor.comenzar();
-    });
+    let hilo_servidor = thread::Builder::new().name("t3-servidor".into());
+    let hilo_cliente1 = thread::Builder::new().name("t3-cliente".into());
 
-    thread::spawn(move || {
+    hilo_servidor.spawn(move || {
+        servidor.comenzar();
+    }).unwrap();
+
+    hilo_cliente1.spawn(move || {
         let evento = escucha.recv();
         assert_eq!(evento, Ok(EventoServidor::ServidorArriba));
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
+
+        let evento = util::obtener_evento_conexion(&cliente);
+        assert_eq!(evento, EventoConexion::EmpiezaConexion);
 
         util::mandar_mensaje(&cliente, String::from("nombre_test"));
         let evento = escucha.recv();
@@ -118,9 +127,5 @@ fn test_crea_salas() {
         util::mandar_mensaje(&cliente, String::from("sala"));
         let evento = escucha.recv();
         assert_eq!(evento, Ok(EventoServidor::NuevaSala));
-
-        util::mandar_evento(&cliente, EventoConexion::TerminaConexion);
-        let evento = escucha.recv();
-        assert_eq!(evento, Ok(EventoServidor::ServidorAbajo));
-    });
+    }).unwrap();
 }
