@@ -9,6 +9,6 @@ fn main() {
     let ip = &args[1];
     let puerto = &args[2];
 
-    let mut servidor = red::servidor::Servidor::new(ip.to_string(), puerto.to_string());
+    let mut servidor = red::servidor::Servidor::new(ip, puerto);
     servidor.comenzar();
 }
