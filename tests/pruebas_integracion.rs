@@ -8,7 +8,7 @@ use std::net::{TcpStream};
 #[test]
 fn test_servidor_arriba() {
     let puerto = "2020";
-    let mut servidor = Servidor::new(puerto);
+    let mut servidor = Servidor::new("localhost", puerto);
     let escucha = servidor.nuevo_escucha();
 
     thread::spawn(move || {
@@ -30,7 +30,7 @@ fn test_servidor_arriba() {
 #[test]
 fn test_acepta_conexiones() {
     let puerto = "7878";
-    let mut servidor = Servidor::new(puerto);
+    let mut servidor = Servidor::new("localhost", puerto);
     let escucha = servidor.nuevo_escucha();
 
     thread::spawn(move || {
@@ -65,7 +65,7 @@ fn test_acepta_conexiones() {
 #[test]
 fn test_manda_mensajes() {
     let puerto = "9090";
-    let mut servidor = Servidor::new(puerto);
+    let mut servidor = Servidor::new("localhost", puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
 
@@ -131,7 +131,7 @@ fn test_manda_mensajes() {
 #[test]
 fn test_crea_salas() {
     let puerto = "7070";
-    let mut servidor = Servidor::new(puerto);
+    let mut servidor = Servidor::new("localhost", puerto);
     let escucha = servidor.nuevo_escucha();
 
     thread::spawn(move || {
