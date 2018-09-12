@@ -3,7 +3,7 @@ use super::{cliente::Cliente, eventoservidor::EventoServidor, eventoconexion::Ev
 
 use std::net::{TcpStream, TcpListener, SocketAddr};
 use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
+use std::{thread, time};
 use std::io::{Error, ErrorKind};
 
 type MutexCliente = Arc<Mutex<Vec<Cliente>>>;
@@ -61,6 +61,7 @@ impl Servidor {
             if let Ok(evento) = rx.try_recv() {
                 self.maneja_evento_servidor(evento);
             }
+            thread::sleep(time::Duration::from_millis(500));
         }
     }
 
