@@ -1,6 +1,7 @@
 use super::{eventoconexion::EventoConexion};
 use std::net::{TcpStream};
 use std::io::{Read, Write};
+use std::io::{Error, ErrorKind};
 
 pub const CHAR_NULL: u8 = 00000000;
 
@@ -25,7 +26,7 @@ pub fn obtener_evento_conexion(mut socket: &TcpStream) -> EventoConexion {
                 }
             }
             else {
-                EventoConexion::EventoInvalido
+                EventoConexion::Desconexion
             }
         },
         _ => {
@@ -34,31 +35,33 @@ pub fn obtener_evento_conexion(mut socket: &TcpStream) -> EventoConexion {
     }
 }
 
-pub fn obtener_mensaje_conexion(mut socket: &TcpStream) -> String {
+pub fn obtener_mensaje_conexion(mut socket: &TcpStream) -> Result<String, Error> {
     let mut buffer = [0; 180];
     match socket.read(&mut buffer) {
         Ok(count) => {
             if count > 0 {
-                mensaje_de_buffer(&buffer)
+                Ok(mensaje_de_buffer(&buffer))
             }
             else {
-                String::new()
+                Err(Error::new(ErrorKind::ConnectionAborted, "El cliente terminó la conexión"))
             }
         },
         _ => {
-            String::new()
+            Err(Error::new(ErrorKind::ConnectionAborted, "El cliente terminó la conexión"))
         }
     }
 }
 
-pub fn mandar_evento(mut socket: &TcpStream, evento: EventoConexion) {
+pub fn mandar_evento(mut socket: &TcpStream, evento: EventoConexion) -> Result<(), Error>{
     let evento = evento.to_string().into_bytes();
-    socket.write(&evento[..]).unwrap();
-    socket.flush().unwrap();
+    socket.write(&evento[..])?;
+    socket.flush()?;
+    Ok(())
 }
 
-pub fn mandar_mensaje(mut socket: &TcpStream, mensaje: String) {
+pub fn mandar_mensaje(mut socket: &TcpStream, mensaje: String) -> Result<(), Error>{
     let mensaje = mensaje.into_bytes();
-    socket.write(&mensaje[..]).unwrap();
-    socket.flush().unwrap();
+    socket.write(&mensaje[..])?;
+    socket.flush()?;
+    Ok(())
 }

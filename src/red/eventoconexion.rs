@@ -9,6 +9,7 @@ pub enum EventoConexion {
     CambiarSala,
     NuevaSala,
     EventoInvalido,
+    Desconexion,
 }
 
 impl FromStr for EventoConexion {
