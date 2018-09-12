@@ -1,5 +1,6 @@
 use std::net::{TcpStream, SocketAddr, Shutdown};
 use red::{eventoconexion::EventoConexion, util};
+use std::io::Error;
 
 pub struct Cliente {
     nombre: String,
@@ -17,9 +18,10 @@ impl Cliente {
         }
     }
 
-    pub fn detener(&mut self) {
-        util::mandar_evento(&self.socket, EventoConexion::TerminaConexion);
+    pub fn detener(&mut self) -> Result<(), Error> {
+        util::mandar_evento(&self.socket, EventoConexion::TerminaConexion)?;
         self.socket.shutdown(Shutdown::Both).expect("Error al cerrar el socket");
+        Ok(())
     }
 
     pub fn nombre(&self) -> &str {

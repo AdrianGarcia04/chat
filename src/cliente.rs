@@ -149,9 +149,14 @@ fn main() {
     thread::spawn(move || {
         let cliente = rx.recv().unwrap();
         loop {
-            let mensaje = red::util::obtener_mensaje_conexion(&cliente);
-            tx2.send(mensaje).unwrap();
-            glib::idle_add(recibir);
+            if let Ok(mensaje) = red::util::obtener_mensaje_conexion(&cliente) {
+                tx2.send(mensaje).unwrap();
+                glib::idle_add(recibir);
+            }
+            else {
+                println!("Rompiendo hilo");
+                break;
+            }
         }
     });
     gtk::main();
