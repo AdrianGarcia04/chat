@@ -224,7 +224,7 @@ impl Servidor {
         let mut clientes = mutex_clientes.lock().unwrap();
         let mensaje = &mensaje[..];
         for cliente in clientes.iter_mut() {
-            util::mandar_evento(&cliente.get_socket(), EventoConexion::Mensaje)?;
+            // util::mandar_evento(&cliente.get_socket(), EventoConexion::Mensaje)?;
             util::mandar_mensaje(&cliente.get_socket(), mensaje.to_string())?;
         }
         drop(clientes);
@@ -264,6 +264,35 @@ impl Servidor {
         lista_clientes
     }
 
+    fn envia_mensaje_privado(mutex_clientes: &MutexCliente, mut argumentos: Vec<String>) -> Result<(), Error> {
+        let destinatario = Servidor::obtener_destinatario(mutex_clientes, &mut argumentos)?;
+        let mensaje = argumentos.join(" ");
+        if mensaje.len() > 0 {
+            util::mandar_mensaje(destinatario.get_socket(), mensaje)?;
+        }
+        Ok(())
+    }
+
+    fn obtener_destinatario(mutex_clientes: &MutexCliente, argumentos: &mut Vec<String>)
+        -> Result<Cliente, Error> {
+        if argumentos.len() != 0 {
+            let nombre_a_buscar = argumentos.remove(0);
+            let clientes = mutex_clientes.lock().unwrap();
+            for cliente in clientes.iter() {
+                if let Some(nombre) = cliente.get_nombre() {
+                    if nombre.eq(&nombre_a_buscar) {
+                        return Ok(cliente.clone())
+                    }
+                }
+            }
+            Err(Error::new(ErrorKind::ConnectionRefused,
+                format!("No se encontró al usuario {}", nombre_a_buscar)))
+        }
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused, "No se especificó el destinatario"))
+        }
+    }
+
     fn reaccionar(socket: TcpStream, direccion_socket: SocketAddr, mutex_clientes: &MutexCliente,
         mutex_salas: &MutexSala, tx: CanalServidor) -> Result<(), Error> {
         let (evento, argumentos) = util::obtener_mensaje_cliente(&socket)?;
@@ -297,10 +326,15 @@ impl Servidor {
                 util::mandar_mensaje(&socket, serde_json::to_string(&usuarios).unwrap()).unwrap();
                 Ok(())
             },
-            EventoConexion::Mensaje => {
-                util::mandar_evento(&socket, EventoConexion::Mensaje)?;
-                let mensaje = util::obtener_mensaje_conexion(&socket)?;
-                // Servidor::esparcir_mensaje_a_clientes(mutex_clientes, mensaje, direccion_socket)?;
+            EventoConexion::MESSAGE => {
+                match Servidor::envia_mensaje_privado(mutex_clientes, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket, "Mensaje enviado.".to_string()).unwrap();
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
+                    }
+                };
                 Ok(())
             },
             EventoConexion::TerminaConexion => {
