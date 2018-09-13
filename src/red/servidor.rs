@@ -281,7 +281,7 @@ impl Servidor {
             if Servidor::sala_es_unica(&nombre_nueva_sala, mutex_salas) {
                 let mut salas = mutex_salas.lock().unwrap();
                 let mut nueva_sala = Sala::new(nombre_nueva_sala.to_string(), direccion_propietario);
-                nueva_sala.agregar_miembro(socket_propietario);
+                nueva_sala.agregar_miembro(direccion_propietario, socket_propietario);
                 salas.push(nueva_sala);
                 Ok(())
             }
@@ -317,7 +317,7 @@ impl Servidor {
                 if sala.es_propietario(direccion_propietario) {
                     let invitados = Servidor::buscar_clientes(mutex_clientes, argumentos);
                     for cliente in invitados.iter() {
-                        sala.invitar_miembro(cliente.get_direccion_socket());
+                        sala.invitar_miembro(cliente.get_direccion_socket(), cliente.get_socket());
                     }
                     return Ok(());
                 }
@@ -343,7 +343,7 @@ impl Servidor {
         encontrados
     }
 
-    fn unirse_a_sala(mutex_salas: &MutexSala, direccion_socket: SocketAddr, socket_invitado: &TcpStream,
+    fn unirse_a_sala(mutex_salas: &MutexSala, direccion_invitado: SocketAddr, socket_invitado: &TcpStream,
         mut argumentos: Vec<String>) -> Result<(), Error> {
         if argumentos.len() == 0 {
             return Err(Error::new(ErrorKind::ConnectionRefused,
@@ -353,14 +353,42 @@ impl Servidor {
         let mut salas = mutex_salas.lock().unwrap();
         for sala in salas.iter_mut() {
             if sala.get_nombre().eq(&nombre_sala) {
-                if sala.cliente_esta_invitado(direccion_socket) {
+                if sala.cliente_esta_invitado(direccion_invitado) {
                     let invitado = socket_invitado.try_clone().expect("Error al clonar socket");
-                    sala.agregar_miembro(&invitado);
+                    sala.agregar_miembro(direccion_invitado, &invitado);
                     return Ok(());
                 }
                 else {
                     return  Err(Error::new(ErrorKind::ConnectionRefused,
                                 "No estás invitado para unirte"));
+                }
+            }
+        }
+        Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
+    }
+
+    fn envia_mensaje_sala(mutex_salas: &MutexSala, direccion_remitente: SocketAddr,
+        mut argumentos: Vec<String>) -> Result<(), Error> {
+        if argumentos.len() == 0 {
+            return Err(Error::new(ErrorKind::ConnectionRefused,
+                "No se especificó la sala"));
+        }
+        let nombre_sala = argumentos.remove(0);
+        let mut salas = mutex_salas.lock().unwrap();
+        for sala in salas.iter_mut() {
+            if sala.get_nombre().eq(&nombre_sala) {
+                if sala.cliente_es_miembro(direccion_remitente) {
+                    let mensaje = argumentos.join(" ");
+                    if mensaje.len() > 0 {
+                        for (_, socket_miembro) in sala.get_miembros().iter_mut() {
+                            util::mandar_mensaje(socket_miembro, mensaje.clone())?;
+                        }
+                    }
+                    return Ok(());
+                }
+                else {
+                    return  Err(Error::new(ErrorKind::ConnectionRefused,
+                                "No eres miembro de esa sala"));
                 }
             }
         }
@@ -448,6 +476,17 @@ impl Servidor {
                 match Servidor::unirse_a_sala(mutex_salas, direccion_socket, &socket, argumentos) {
                     Ok(_) => {
                         util::mandar_mensaje(&socket, "Te uniste exitosamente.".to_string()).unwrap();
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
+                    }
+                };
+                Ok(())
+            },
+            EventoConexion::ROOMESSAGE => {
+                match Servidor::envia_mensaje_sala(mutex_salas, direccion_socket, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket, "Mensaje enviado.".to_string()).unwrap();
                     },
                     Err(error) => {
                         util::mandar_mensaje(&socket, error.to_string()).unwrap();
