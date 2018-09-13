@@ -1,20 +1,22 @@
-use std::net::{TcpStream};
+use std::net::{TcpStream, SocketAddr};
 
 pub struct Sala {
     nombre: String,
     miembros: Vec<TcpStream>,
+    direccion_propietario: SocketAddr,
 }
 
 impl Sala {
 
-    pub fn new(nombre: String) -> Sala {
+    pub fn new(nombre: String, direccion_propietario: SocketAddr) -> Sala {
         Sala {
             nombre: nombre,
             miembros: Vec::new(),
+            direccion_propietario: direccion_propietario,
         }
     }
 
-    pub fn nombre(&self) -> &str {
+    pub fn get_nombre(&self) -> &str {
         &self.nombre[..]
     }
 
@@ -34,6 +36,7 @@ impl Clone for Sala {
         Sala {
             nombre: self.nombre.clone(),
             miembros: miembros,
+            direccion_propietario: self.direccion_propietario.clone(),
         }
     }
  }
