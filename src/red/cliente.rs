@@ -1,5 +1,5 @@
 use std::net::{TcpStream, SocketAddr, Shutdown};
-use red::{eventoconexion::EventoConexion, util};
+use red::{eventoconexion::EventoConexion, estadocliente::EstadoCliente, util};
 use std::io::Error;
 
 #[derive(Debug)]
@@ -7,6 +7,7 @@ pub struct Cliente {
     nombre: Option<String>,
     socket: TcpStream,
     direccion_socket: SocketAddr,
+    estado: EstadoCliente,
 }
 
 impl Cliente {
@@ -16,6 +17,7 @@ impl Cliente {
             nombre: nombre,
             socket: socket,
             direccion_socket: direccion_socket,
+            estado: EstadoCliente::ACTIVE
         }
     }
 
@@ -45,6 +47,14 @@ impl Cliente {
         self.socket.try_clone().expect("Error al clonar socket")
     }
 
+    pub fn get_estado(&self) -> &EstadoCliente {
+        &self.estado
+    }
+
+    pub fn set_estado(&mut self, estado: EstadoCliente) {
+        self.estado = estado;
+    }
+
 }
 
 impl Clone for Cliente {
@@ -53,6 +63,7 @@ impl Clone for Cliente {
             nombre: self.nombre.clone(),
             socket: self.socket.try_clone().expect("Error al clonar"),
             direccion_socket: self.direccion_socket.clone(),
+            estado: self.estado.clone()
         }
     }
  }
