@@ -142,23 +142,6 @@ impl Servidor {
         }
     }
 
-
-    fn cambiar_sala(socket: &TcpStream, mutex_salas: &MutexSala, nombre_sala: String) {
-        let mut salas = mutex_salas.lock().unwrap();
-        for sala in salas.iter_mut() {
-            if sala.nombre() == nombre_sala {
-                sala.agregar_miembro(&socket);
-            }
-        }
-    }
-
-    fn crear_sala(socket: &TcpStream, mutex_salas: &MutexSala, nombre_sala: String) {
-        let mut salas = mutex_salas.lock().unwrap();
-        let mut sala = Sala::new(nombre_sala);
-        sala.agregar_miembro(&socket);
-        salas.push(sala);
-    }
-
     fn aceptar_cliente(mutex_clientes: &MutexCliente, socket: &TcpStream,
         direccion_socket: SocketAddr) -> Result<(), Error> {
         let _socket = socket.try_clone()?;
@@ -217,18 +200,6 @@ impl Servidor {
             }
         }
         true
-    }
-
-    fn esparcir_mensaje_a_clientes(mutex_clientes: &MutexCliente, mensaje: String,
-        _direccion_socket: SocketAddr) -> Result<(), Error>{
-        let mut clientes = mutex_clientes.lock().unwrap();
-        let mensaje = &mensaje[..];
-        for cliente in clientes.iter_mut() {
-            // util::mandar_evento(&cliente.get_socket(), EventoConexion::Mensaje)?;
-            util::mandar_mensaje(&cliente.get_socket(), mensaje.to_string())?;
-        }
-        drop(clientes);
-        Ok(())
     }
 
     fn cambiar_nombre_usuario(mutex_clientes: &MutexCliente, direccion_socket: SocketAddr,
@@ -303,6 +274,36 @@ impl Servidor {
         }
     }
 
+    fn crear_sala(mutex_salas: &MutexSala, socket_propietario: &TcpStream, direccion_propietario: SocketAddr,
+        mut argumentos: Vec<String>) -> Result<(), Error> {
+        if argumentos.len() != 0 {
+            let nombre_nueva_sala = argumentos.remove(0);
+            if Servidor::sala_es_unica(&nombre_nueva_sala, mutex_salas) {
+                let mut salas = mutex_salas.lock().unwrap();
+                let mut nueva_sala = Sala::new(nombre_nueva_sala.to_string(), direccion_propietario);
+                nueva_sala.agregar_miembro(socket_propietario);
+                salas.push(nueva_sala);
+                Ok(())
+            }
+            else {
+                Err(Error::new(ErrorKind::ConnectionRefused, "Ya existe una sala con ese nombre"))
+            }
+        }
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused, "No se especificó el nombre de la sala"))
+        }
+    }
+
+    fn sala_es_unica(nombre: &str, mutex_salas: &MutexSala) -> bool {
+        let mut salas = mutex_salas.lock().unwrap();
+        for sala in salas.iter_mut() {
+            if sala.get_nombre().eq(nombre) {
+                return false;
+            }
+        }
+        true
+    }
+
     fn reaccionar(socket: TcpStream, direccion_socket: SocketAddr, mutex_clientes: &MutexCliente,
         mutex_salas: &MutexSala, tx: CanalServidor) -> Result<(), Error> {
         let (evento, argumentos) = util::obtener_mensaje_cliente(&socket)?;
@@ -358,21 +359,19 @@ impl Servidor {
                 };
                 Ok(())
             },
+            EventoConexion::CREATEROOM => {
+                match Servidor::crear_sala(mutex_salas, &socket, direccion_socket, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket, "Sala creada exitosamente.".to_string()).unwrap();
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
+                    }
+                };
+                Ok(())
+            },
             EventoConexion::TerminaConexion => {
                 tx.send(EventoServidor::ServidorAbajo).unwrap();
-                Ok(())
-            },
-            EventoConexion::CambiarSala => {
-                util::mandar_evento(&socket, EventoConexion::CambiarSala)?;
-                let sala = util::obtener_mensaje_conexion(&socket)?;
-                // Servidor::cambiar_sala(&socket, mutex_salas, sala);
-                Ok(())
-            },
-            EventoConexion::NuevaSala => {
-                util::mandar_evento(&socket, EventoConexion::NuevaSala)?;
-                let nombre_sala = util::obtener_mensaje_conexion(&socket)?;
-                // Servidor::crear_sala(&socket, mutex_salas, nombre_sala);
-                tx.send(EventoServidor::NuevaSala).unwrap();
                 Ok(())
             },
             EventoConexion::EventoInvalido => {
