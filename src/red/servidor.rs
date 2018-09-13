@@ -160,11 +160,8 @@ impl Servidor {
 
     fn aceptar_cliente(mutex_clientes: &MutexCliente, socket: &TcpStream,
         direccion_socket: SocketAddr) -> Result<(), Error> {
-
-        util::mandar_evento(&socket, EventoConexion::EmpiezaConexion)?;
-        let nombre = Servidor::obtener_nombre(socket)?;
         let _socket = socket.try_clone()?;
-        let cliente = Cliente::new(nombre, _socket, direccion_socket);
+        let cliente = Cliente::new(None, _socket, direccion_socket);
         let mut clientes = mutex_clientes.lock().unwrap();
         clientes.push(cliente.clone());
         drop(clientes);
@@ -172,15 +169,35 @@ impl Servidor {
         Ok(())
     }
 
-    fn obtener_nombre(mut socket: &TcpStream) -> Result<String, Error> {
-        let nombre = util::obtener_mensaje_conexion(&mut socket)?;
-        if nombre.len() < 1 || nombre.len() > 20 {
-            Err(Error::new(ErrorKind::ConnectionRefused,
-                "El nombre debe tener una longitud entre 1 y 20 caracteres"))
+    fn obtener_nombre(mut argumentos: Vec<String>, mutex_clientes: &MutexCliente) -> Result<String, Error> {
+        if argumentos.len() != 0 {
+            let nombre = argumentos.remove(0);
+            if nombre.len() < 1 || nombre.len() > 20 {
+                Err(Error::new(ErrorKind::ConnectionRefused,
+                    "El nombre debe tener una longitud entre 1 y 20 caracteres"))
+            }
+            else if Servidor::es_nombre_unico(&nombre, mutex_clientes) {
+                Ok(nombre)
+            }
+            else {
+                Err(Error::new(ErrorKind::ConnectionRefused, "Ya existe un usuario con ese nombre"))
+            }
         }
         else {
-            Ok(nombre)
+            Err(Error::new(ErrorKind::ConnectionRefused, "No se especificó el nombre"))
         }
+    }
+
+    fn es_nombre_unico(nombre: &str, mutex_clientes: &MutexCliente) -> bool {
+        let mut clientes = mutex_clientes.lock().unwrap();
+        for cliente in clientes.iter_mut() {
+            if let Some(nombre_cliente) = cliente.get_nombre() {
+                if nombre_cliente.eq(nombre) {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     fn esparcir_mensaje_a_clientes(mutex_clientes: &MutexCliente, mensaje: String,
@@ -188,20 +205,44 @@ impl Servidor {
         let mut clientes = mutex_clientes.lock().unwrap();
         let mensaje = &mensaje[..];
         for cliente in clientes.iter_mut() {
-            util::mandar_evento(&cliente.socket(), EventoConexion::Mensaje)?;
-            util::mandar_mensaje(&cliente.socket(), mensaje.to_string())?;
+            util::mandar_evento(&cliente.get_socket(), EventoConexion::Mensaje)?;
+            util::mandar_mensaje(&cliente.get_socket(), mensaje.to_string())?;
         }
         drop(clientes);
         Ok(())
     }
 
+    fn cambiar_nombre_usuario(mutex_clientes: &MutexCliente, direccion_socket: SocketAddr,
+        argumentos: Vec<String>) -> Result<(), Error> {
+        let nombre = Servidor::obtener_nombre(argumentos, mutex_clientes)?;
+        let mut clientes = mutex_clientes.lock().unwrap();
+        for cliente in clientes.iter_mut() {
+            if cliente.get_direccion_socket().eq(&direccion_socket) {
+                cliente.set_nombre(&nombre);
+            }
+        }
+        Ok(())
+    }
+
     fn reaccionar(socket: TcpStream, direccion_socket: SocketAddr, mutex_clientes: &MutexCliente,
         mutex_salas: &MutexSala, tx: CanalServidor) -> Result<(), Error> {
-        match util::obtener_evento_conexion(&socket) {
+        let (evento, argumentos) = util::obtener_mensaje_cliente(&socket)?;
+        match evento {
+            EventoConexion::IDENTIFY => {
+                match Servidor::cambiar_nombre_usuario(mutex_clientes, direccion_socket, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket, "Cambiaste tu nombre exitosamente.".to_string());
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string());
+                    }
+                };
+                Ok(())
+            },
             EventoConexion::Mensaje => {
                 util::mandar_evento(&socket, EventoConexion::Mensaje)?;
                 let mensaje = util::obtener_mensaje_conexion(&socket)?;
-                Servidor::esparcir_mensaje_a_clientes(mutex_clientes, mensaje, direccion_socket)?;
+                // Servidor::esparcir_mensaje_a_clientes(mutex_clientes, mensaje, direccion_socket)?;
                 Ok(())
             },
             EventoConexion::TerminaConexion => {
@@ -211,13 +252,13 @@ impl Servidor {
             EventoConexion::CambiarSala => {
                 util::mandar_evento(&socket, EventoConexion::CambiarSala)?;
                 let sala = util::obtener_mensaje_conexion(&socket)?;
-                Servidor::cambiar_sala(&socket, mutex_salas, sala);
+                // Servidor::cambiar_sala(&socket, mutex_salas, sala);
                 Ok(())
             },
             EventoConexion::NuevaSala => {
                 util::mandar_evento(&socket, EventoConexion::NuevaSala)?;
                 let nombre_sala = util::obtener_mensaje_conexion(&socket)?;
-                Servidor::crear_sala(&socket, mutex_salas, nombre_sala);
+                // Servidor::crear_sala(&socket, mutex_salas, nombre_sala);
                 tx.send(EventoServidor::NuevaSala).unwrap();
                 Ok(())
             },
