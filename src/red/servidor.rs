@@ -272,6 +272,16 @@ impl Servidor {
         }
         Ok(())
     }
+    fn envia_mensaje_publico(mutex_clientes: &MutexCliente, argumentos: Vec<String>) -> Result<(), Error> {
+        let mensaje = argumentos.join(" ");
+        if mensaje.len() > 0 {
+            let mut clientes = mutex_clientes.lock().unwrap();
+            for cliente in clientes.iter_mut() {
+                util::mandar_mensaje(cliente.get_socket(), mensaje.clone()).unwrap();
+            }
+        }
+        Ok(())
+    }
 
     fn obtener_destinatario(mutex_clientes: &MutexCliente, argumentos: &mut Vec<String>)
         -> Result<Cliente, Error> {
@@ -328,6 +338,17 @@ impl Servidor {
             },
             EventoConexion::MESSAGE => {
                 match Servidor::envia_mensaje_privado(mutex_clientes, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket, "Mensaje enviado.".to_string()).unwrap();
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
+                    }
+                };
+                Ok(())
+            },
+            EventoConexion::PUBLICMESSAGE => {
+                match Servidor::envia_mensaje_publico(mutex_clientes, argumentos) {
                     Ok(_) => {
                         util::mandar_mensaje(&socket, "Mensaje enviado.".to_string()).unwrap();
                     },
