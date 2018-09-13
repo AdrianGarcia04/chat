@@ -1,5 +1,5 @@
 use super::{cliente::Cliente, eventoservidor::EventoServidor, eventoconexion::EventoConexion,
-    sala::Sala, util};
+    sala::Sala, util, estadocliente::EstadoCliente};
 
 use std::net::{TcpStream, TcpListener, SocketAddr};
 use std::sync::{mpsc, Arc, Mutex};
@@ -188,6 +188,24 @@ impl Servidor {
         }
     }
 
+    fn obtener_estado(mut argumentos: Vec<String>) -> Result<EstadoCliente, Error> {
+        if argumentos.len() != 0 {
+            let estado = argumentos.remove(0);
+            match estado.parse::<EstadoCliente>() {
+                Ok(estado) => {
+                    Ok(estado)
+                },
+                Err(_) => {
+                    Err(Error::new(ErrorKind::ConnectionRefused,
+                        "Proporciona un estado válido: ACTIVE, AWAY, BUSY"))
+                }
+            }
+        }
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused, "No se especificó el estado"))
+        }
+    }
+
     fn es_nombre_unico(nombre: &str, mutex_clientes: &MutexCliente) -> bool {
         let mut clientes = mutex_clientes.lock().unwrap();
         for cliente in clientes.iter_mut() {
@@ -224,6 +242,18 @@ impl Servidor {
         Ok(())
     }
 
+    fn cambiar_estado_usuario(mutex_clientes: &MutexCliente, direccion_socket: SocketAddr,
+        argumentos: Vec<String>) -> Result<(), Error> {
+        let estado = Servidor::obtener_estado(argumentos)?;
+        let mut clientes = mutex_clientes.lock().unwrap();
+        for cliente in clientes.iter_mut() {
+            if cliente.get_direccion_socket().eq(&direccion_socket) {
+                cliente.set_estado(estado.clone());
+            }
+        }
+        Ok(())
+    }
+
     fn reaccionar(socket: TcpStream, direccion_socket: SocketAddr, mutex_clientes: &MutexCliente,
         mutex_salas: &MutexSala, tx: CanalServidor) -> Result<(), Error> {
         let (evento, argumentos) = util::obtener_mensaje_cliente(&socket)?;
@@ -231,10 +261,23 @@ impl Servidor {
             EventoConexion::IDENTIFY => {
                 match Servidor::cambiar_nombre_usuario(mutex_clientes, direccion_socket, argumentos) {
                     Ok(_) => {
-                        util::mandar_mensaje(&socket, "Cambiaste tu nombre exitosamente.".to_string());
+                        util::mandar_mensaje(&socket,
+                            "Cambiaste tu nombre exitosamente.".to_string()).unwrap();
                     },
                     Err(error) => {
-                        util::mandar_mensaje(&socket, error.to_string());
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
+                    }
+                };
+                Ok(())
+            },
+            EventoConexion::STATUS => {
+                match Servidor::cambiar_estado_usuario(mutex_clientes, direccion_socket, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket,
+                            "Cambiaste tu estado exitosamente.".to_string()).unwrap();
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
                     }
                 };
                 Ok(())
