@@ -343,6 +343,30 @@ impl Servidor {
         encontrados
     }
 
+    fn unirse_a_sala(mutex_salas: &MutexSala, direccion_socket: SocketAddr, socket_invitado: &TcpStream,
+        mut argumentos: Vec<String>) -> Result<(), Error> {
+        if argumentos.len() == 0 {
+            return Err(Error::new(ErrorKind::ConnectionRefused,
+                "No se especificó la sala"));
+        }
+        let nombre_sala = argumentos.remove(0);
+        let mut salas = mutex_salas.lock().unwrap();
+        for sala in salas.iter_mut() {
+            if sala.get_nombre().eq(&nombre_sala) {
+                if sala.cliente_esta_invitado(direccion_socket) {
+                    let invitado = socket_invitado.try_clone().expect("Error al clonar socket");
+                    sala.agregar_miembro(&invitado);
+                    return Ok(());
+                }
+                else {
+                    return  Err(Error::new(ErrorKind::ConnectionRefused,
+                                "No estás invitado para unirte"));
+                }
+            }
+        }
+        Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
+    }
+
     fn reaccionar(socket: TcpStream, direccion_socket: SocketAddr, mutex_clientes: &MutexCliente,
         mutex_salas: &MutexSala, tx: CanalServidor) -> Result<(), Error> {
         let (evento, argumentos) = util::obtener_mensaje_cliente(&socket)?;
@@ -413,6 +437,17 @@ impl Servidor {
                 match Servidor::enviar_invitacion(mutex_clientes, mutex_salas, direccion_socket, argumentos) {
                     Ok(_) => {
                         util::mandar_mensaje(&socket, "Invitaciones enviadas.".to_string()).unwrap();
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
+                    }
+                };
+                Ok(())
+            },
+            EventoConexion::JOINROOM => {
+                match Servidor::unirse_a_sala(mutex_salas, direccion_socket, &socket, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket, "Te uniste exitosamente.".to_string()).unwrap();
                     },
                     Err(error) => {
                         util::mandar_mensaje(&socket, error.to_string()).unwrap();

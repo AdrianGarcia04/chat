@@ -34,6 +34,10 @@ impl Sala {
     pub fn invitar_miembro(&mut self, direccion_invitado: SocketAddr) {
         self.invitados.push(direccion_invitado);
     }
+
+    pub fn cliente_esta_invitado(&self, direccion_invitado: SocketAddr) -> bool {
+        self.invitados.contains(&direccion_invitado)
+    }
 }
 
 impl Clone for Sala {
