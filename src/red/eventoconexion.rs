@@ -5,6 +5,7 @@ use std::fmt;
 pub enum EventoConexion {
     IDENTIFY,
     STATUS,
+    USERS,
     Mensaje,
     TerminaConexion,
     CambiarSala,
@@ -20,6 +21,7 @@ impl FromStr for EventoConexion {
         match s {
             "IDENTIFY" => Ok(EventoConexion::IDENTIFY),
             "STATUS" => Ok(EventoConexion::STATUS),
+            "USERS" => Ok(EventoConexion::USERS),
             "Mensaje" => Ok(EventoConexion::Mensaje),
             "TerminaConexion" => Ok(EventoConexion::TerminaConexion),
             "EventoInvalido" => Ok(EventoConexion::EventoInvalido),
