@@ -9,9 +9,8 @@ pub enum EventoConexion {
     MESSAGE,
     PUBLICMESSAGE,
     CREATEROOM,
+    INVITE,
     TerminaConexion,
-    CambiarSala,
-    NuevaSala,
     EventoInvalido,
     Desconexion,
 }
@@ -27,10 +26,9 @@ impl FromStr for EventoConexion {
             "MESSAGE" => Ok(EventoConexion::MESSAGE),
             "PUBLICMESSAGE" => Ok(EventoConexion::PUBLICMESSAGE),
             "CREATEROOM" => Ok(EventoConexion::CREATEROOM),
+            "INVITE" => Ok(EventoConexion::INVITE),
             "TerminaConexion" => Ok(EventoConexion::TerminaConexion),
             "EventoInvalido" => Ok(EventoConexion::EventoInvalido),
-            "CambiarSala" => Ok(EventoConexion::CambiarSala),
-            "NuevaSala" => Ok(EventoConexion::NuevaSala),
             _ => Err(()),
         }
     }

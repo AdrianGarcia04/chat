@@ -304,6 +304,45 @@ impl Servidor {
         true
     }
 
+    fn enviar_invitacion(mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
+        direccion_propietario: SocketAddr, mut argumentos: Vec<String>) -> Result<(), Error> {
+        if argumentos.len() == 0 {
+            return Err(Error::new(ErrorKind::ConnectionRefused,
+                "No se especificó la sala"));
+        }
+        let nombre_sala = argumentos.remove(0);
+        let mut salas = mutex_salas.lock().unwrap();
+        for sala in salas.iter_mut() {
+            if sala.get_nombre().eq(&nombre_sala) {
+                if sala.es_propietario(direccion_propietario) {
+                    let invitados = Servidor::buscar_clientes(mutex_clientes, argumentos);
+                    for cliente in invitados.iter() {
+                        sala.invitar_miembro(cliente.get_direccion_socket());
+                    }
+                    return Ok(());
+                }
+                else {
+                    return  Err(Error::new(ErrorKind::ConnectionRefused,
+                                "Debes ser propietario de la sala para invitar personas a unirse"));
+                }
+            }
+        }
+        Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
+    }
+
+    fn buscar_clientes(mutex_clientes: &MutexCliente, nombres_clientes: Vec<String>) -> Vec<Cliente> {
+        let clientes = mutex_clientes.lock().unwrap();
+        let mut encontrados: Vec<Cliente> = Vec::new();
+        for cliente in clientes.iter() {
+            if let Some(nombre) = cliente.get_nombre() {
+                if nombres_clientes.contains(&nombre) {
+                    encontrados.push(cliente.clone())
+                }
+            }
+        }
+        encontrados
+    }
+
     fn reaccionar(socket: TcpStream, direccion_socket: SocketAddr, mutex_clientes: &MutexCliente,
         mutex_salas: &MutexSala, tx: CanalServidor) -> Result<(), Error> {
         let (evento, argumentos) = util::obtener_mensaje_cliente(&socket)?;
@@ -363,6 +402,17 @@ impl Servidor {
                 match Servidor::crear_sala(mutex_salas, &socket, direccion_socket, argumentos) {
                     Ok(_) => {
                         util::mandar_mensaje(&socket, "Sala creada exitosamente.".to_string()).unwrap();
+                    },
+                    Err(error) => {
+                        util::mandar_mensaje(&socket, error.to_string()).unwrap();
+                    }
+                };
+                Ok(())
+            },
+            EventoConexion::INVITE => {
+                match Servidor::enviar_invitacion(mutex_clientes, mutex_salas, direccion_socket, argumentos) {
+                    Ok(_) => {
+                        util::mandar_mensaje(&socket, "Invitaciones enviadas.".to_string()).unwrap();
                     },
                     Err(error) => {
                         util::mandar_mensaje(&socket, error.to_string()).unwrap();
