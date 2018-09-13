@@ -2,15 +2,16 @@ use std::net::{TcpStream, SocketAddr, Shutdown};
 use red::{eventoconexion::EventoConexion, util};
 use std::io::Error;
 
+#[derive(Debug)]
 pub struct Cliente {
-    nombre: String,
+    nombre: Option<String>,
     socket: TcpStream,
     direccion_socket: SocketAddr,
 }
 
 impl Cliente {
 
-    pub fn new(nombre: String, socket: TcpStream, direccion_socket: SocketAddr) -> Cliente {
+    pub fn new(nombre: Option<String>, socket: TcpStream, direccion_socket: SocketAddr) -> Cliente {
         Cliente {
             nombre: nombre,
             socket: socket,
@@ -24,15 +25,19 @@ impl Cliente {
         Ok(())
     }
 
-    pub fn nombre(&self) -> &str {
-        &self.nombre[..]
+    pub fn get_nombre(&self) -> &Option<String> {
+        &self.nombre
     }
 
-    pub fn direccion_socket(&self) -> SocketAddr {
+    pub fn set_nombre(&mut self, nuevo_nombre: &str) {
+        self.nombre = Some(nuevo_nombre.to_string());
+    }
+
+    pub fn get_direccion_socket(&self) -> SocketAddr {
         self.direccion_socket
     }
 
-    pub fn socket(&self) -> &TcpStream {
+    pub fn get_socket(&self) -> &TcpStream {
         &self.socket
     }
 

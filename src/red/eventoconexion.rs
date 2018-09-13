@@ -3,7 +3,7 @@ use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum EventoConexion {
-    EmpiezaConexion,
+    IDENTIFY,
     Mensaje,
     TerminaConexion,
     CambiarSala,
@@ -17,7 +17,7 @@ impl FromStr for EventoConexion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "EmpiezaConexion" => Ok(EventoConexion::EmpiezaConexion),
+            "IDENTIFY" => Ok(EventoConexion::IDENTIFY),
             "Mensaje" => Ok(EventoConexion::Mensaje),
             "TerminaConexion" => Ok(EventoConexion::TerminaConexion),
             "EventoInvalido" => Ok(EventoConexion::EventoInvalido),
