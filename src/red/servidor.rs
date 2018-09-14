@@ -282,7 +282,7 @@ impl Servidor {
             let nombre_nueva_sala = argumentos.remove(0);
             if Servidor::sala_es_unica(&nombre_nueva_sala, mutex_salas) {
                 let mut salas = mutex_salas.lock().unwrap();
-                let mut nueva_sala = Sala::new(nombre_nueva_sala.to_string(), direccion_propietario);
+                let mut nueva_sala = Sala::new(&nombre_nueva_sala, direccion_propietario);
                 nueva_sala.agregar_miembro(direccion_propietario, socket_propietario);
                 salas.push(nueva_sala);
                 Ok(())
@@ -355,7 +355,7 @@ impl Servidor {
         let mut salas = mutex_salas.lock().unwrap();
         for sala in salas.iter_mut() {
             if sala.get_nombre().eq(&nombre_sala) {
-                if sala.cliente_esta_invitado(direccion_invitado) {
+                if sala.cliente_es_invitado(direccion_invitado) {
                     let invitado = socket_invitado.try_clone().expect("Error al clonar socket");
                     sala.agregar_miembro(direccion_invitado, &invitado);
                     return Ok(());
@@ -404,7 +404,7 @@ impl Servidor {
         let mut cliente = clientes.remove(indice_cliente);
         let mut salas = mutex_salas.lock().unwrap();
         for mut sala in salas.iter_mut() {
-            if sala.cliente_esta_invitado(direccion_socket) {
+            if sala.cliente_es_invitado(direccion_socket) {
                 sala.elimina_invitado(direccion_socket);
             }
             if sala.cliente_es_miembro(direccion_socket) {

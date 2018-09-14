@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum EventoConexion {
     IDENTIFY,
     STATUS,
