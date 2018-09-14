@@ -137,7 +137,7 @@ impl Servidor {
         let clientes = Arc::clone(&self.clientes);
         let mut clientes = clientes.lock().unwrap();
         for cliente in clientes.iter_mut() {
-            cliente.detener().expect("Error al detener cliente");
+            cliente.detener();
             drop(cliente);
         }
     }
@@ -207,7 +207,7 @@ impl Servidor {
         let nombre = Servidor::obtener_nombre(argumentos, mutex_clientes)?;
         let mut clientes = mutex_clientes.lock().unwrap();
         for cliente in clientes.iter_mut() {
-            if cliente.get_direccion_socket().eq(&direccion_socket) {
+            if cliente.get_direccion().eq(&direccion_socket) {
                 cliente.set_nombre(&nombre);
             }
         }
@@ -219,7 +219,7 @@ impl Servidor {
         let estado = Servidor::obtener_estado(argumentos)?;
         let mut clientes = mutex_clientes.lock().unwrap();
         for cliente in clientes.iter_mut() {
-            if cliente.get_direccion_socket().eq(&direccion_socket) {
+            if cliente.get_direccion().eq(&direccion_socket) {
                 cliente.set_estado(estado.clone());
             }
         }
@@ -319,7 +319,7 @@ impl Servidor {
                 if sala.es_propietario(direccion_propietario) {
                     let invitados = Servidor::buscar_clientes(mutex_clientes, argumentos);
                     for cliente in invitados.iter() {
-                        sala.invitar_miembro(cliente.get_direccion_socket(), cliente.get_socket());
+                        sala.invitar_miembro(cliente.get_direccion(), cliente.get_socket());
                     }
                     return Ok(());
                 }
@@ -400,7 +400,7 @@ impl Servidor {
     fn desconectar_cliente(direccion_socket: SocketAddr, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala) {
         let mut clientes = mutex_clientes.lock().unwrap();
         let indice_cliente = clientes.iter().
-                position(|cliente| cliente.get_direccion_socket().eq(&direccion_socket)).unwrap();
+                position(|cliente| cliente.get_direccion().eq(&direccion_socket)).unwrap();
         let mut cliente = clientes.remove(indice_cliente);
         let mut salas = mutex_salas.lock().unwrap();
         for mut sala in salas.iter_mut() {
