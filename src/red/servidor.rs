@@ -93,7 +93,8 @@ impl Servidor {
 
                                 },
                                 Err(error) => {
-                                    println!("Error: {:?}", error);
+                                    println!("{:?}", error);
+                                    Servidor::desconectar_cliente(direccion_socket, &clientes, &salas);
                                     break;
                                 }
                             }
@@ -395,8 +396,25 @@ impl Servidor {
         Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
     }
 
+    fn desconectar_cliente(direccion_socket: SocketAddr, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala) {
+        let mut clientes = mutex_clientes.lock().unwrap();
+        let indice_cliente = clientes.iter().
+                position(|cliente| cliente.get_direccion_socket().eq(&direccion_socket)).unwrap();
+        let mut cliente = clientes.remove(indice_cliente);
+        let mut salas = mutex_salas.lock().unwrap();
+        for mut sala in salas.iter_mut() {
+            if sala.cliente_esta_invitado(direccion_socket) {
+                sala.elimina_invitado(direccion_socket);
+            }
+            if sala.cliente_es_miembro(direccion_socket) {
+                sala.elimina_miembro(direccion_socket);
+            }
+        }
+        cliente.detener();
+    }
+
     fn reaccionar(socket: TcpStream, direccion_socket: SocketAddr, mutex_clientes: &MutexCliente,
-        mutex_salas: &MutexSala, tx: CanalServidor) -> Result<(), Error> {
+        mutex_salas: &MutexSala, _tx: CanalServidor) -> Result<(), Error> {
         let (evento, argumentos) = util::obtener_mensaje_cliente(&socket)?;
         match evento {
             EventoConexion::IDENTIFY => {
@@ -494,15 +512,27 @@ impl Servidor {
                 };
                 Ok(())
             },
-            EventoConexion::TerminaConexion => {
-                tx.send(EventoServidor::ServidorAbajo).unwrap();
-                Ok(())
-            },
-            EventoConexion::EventoInvalido => {
-                Ok(())
-            },
-            _ => {
+            EventoConexion::DISCONNECT => {
                 Err(Error::new(ErrorKind::ConnectionAborted, "El cliente terminó la conexión"))
+            },
+            EventoConexion::INVALID => {
+                let mensaje = String::from("Mensaje inválido, lista de mensajes válidos:\n
+                    IDENTIFY nombre \n
+                    STATUS [ACTIVE, AWAY, BUSY] \n
+                    USERS \n
+                    MESSAGE destinatario mensaje \n
+                    PUBLICMESSAGE mensaje \n
+                    CREATEROOM nombre_sala \n
+                    INVITE nombre_sala usuarios... \n
+                    JOINROOM nombre_sala \n
+                    ROOMESSAGE nombre_sala mensaje \n
+                    DISCONNECT \n
+                ");
+                util::mandar_mensaje(&socket, mensaje).unwrap();
+                Ok(())
+            },
+            EventoConexion::ERROR => {
+                Err(Error::new(ErrorKind::ConnectionAborted, "La conexión fue interrumpida"))
             },
         }
     }

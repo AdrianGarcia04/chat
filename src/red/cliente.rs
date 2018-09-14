@@ -22,7 +22,7 @@ impl Cliente {
     }
 
     pub fn detener(&mut self) -> Result<(), Error> {
-        util::mandar_evento(&self.socket, EventoConexion::TerminaConexion)?;
+        util::mandar_evento(&self.socket, EventoConexion::DISCONNECT)?;
         self.socket.shutdown(Shutdown::Both).expect("Error al cerrar el socket");
         Ok(())
     }

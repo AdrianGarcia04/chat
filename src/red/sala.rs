@@ -62,6 +62,14 @@ impl Sala {
             None => false,
         }
     }
+
+    pub fn elimina_miembro(&mut self, direccion_miembro: SocketAddr) {
+        self.miembros.remove(&direccion_miembro);
+    }
+
+    pub fn elimina_invitado(&mut self, direccion_invitado: SocketAddr) {
+        self.invitados.remove(&direccion_invitado);
+    }
 }
 
 impl Clone for Sala {

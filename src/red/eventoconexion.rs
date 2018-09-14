@@ -12,9 +12,9 @@ pub enum EventoConexion {
     INVITE,
     JOINROOM,
     ROOMESSAGE,
-    TerminaConexion,
-    EventoInvalido,
-    Desconexion,
+    DISCONNECT,
+    INVALID,
+    ERROR,
 }
 
 impl FromStr for EventoConexion {
@@ -31,8 +31,9 @@ impl FromStr for EventoConexion {
             "INVITE" => Ok(EventoConexion::INVITE),
             "JOINROOM" => Ok(EventoConexion::JOINROOM),
             "ROOMESSAGE" => Ok(EventoConexion::ROOMESSAGE),
-            "TerminaConexion" => Ok(EventoConexion::TerminaConexion),
-            "EventoInvalido" => Ok(EventoConexion::EventoInvalido),
+            "DISCONNECT" => Ok(EventoConexion::DISCONNECT),
+            "INVALID" => Ok(EventoConexion::INVALID),
+            "ERROR" => Ok(EventoConexion::ERROR),
             _ => Err(()),
         }
     }
