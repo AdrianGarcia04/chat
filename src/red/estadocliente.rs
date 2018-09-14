@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum EstadoCliente {
     ACTIVE,
     AWAY,

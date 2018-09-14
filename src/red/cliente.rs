@@ -1,7 +1,6 @@
 use std::net::{TcpStream, SocketAddr, Shutdown};
 use red::{eventoconexion::EventoConexion, estadocliente::EstadoCliente, util};
 use std::io::Error;
-use serde::{Serialize, Serializer, ser::SerializeStruct};
 
 pub struct Cliente {
     nombre: Option<String>,
@@ -76,19 +75,6 @@ impl PartialEq for Cliente {
     }
 
     fn ne(&self, other: &Cliente) -> bool {
-
-    self.direccion_socket != other.direccion_socket && self.nombre != other.nombre
-    }
-}
-
-impl Serialize for Cliente {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,{
-        let mut serializable =  serializer.serialize_struct("Cliente", 3)?;
-        serializable.serialize_field("nombre", &self.nombre.clone())?;
-        serializable.serialize_field("estado", &self.estado.clone())?;
-        serializable.serialize_field("direccion", &self.direccion_socket.clone())?;
-        serializable.end()
+        self.direccion_socket != other.direccion_socket && self.nombre != other.nombre
     }
 }

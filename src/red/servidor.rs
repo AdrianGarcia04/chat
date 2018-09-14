@@ -5,7 +5,6 @@ use std::net::{TcpStream, TcpListener, SocketAddr};
 use std::sync::{mpsc, Arc, Mutex};
 use std::{thread, time};
 use std::io::{Error, ErrorKind};
-use serde_json;
 
 type MutexCliente = Arc<Mutex<Vec<Cliente>>>;
 type MutexSala = Arc<Mutex<Vec<Sala>>>;
@@ -227,11 +226,13 @@ impl Servidor {
         Ok(())
     }
 
-    fn obtener_usuarios(mutex_clientes: &MutexCliente) -> Vec<Cliente> {
+    fn obtener_usuarios(mutex_clientes: &MutexCliente) -> Vec<String> {
         let clientes = mutex_clientes.lock().unwrap();
         let mut lista_clientes = Vec::new();
         for cliente in clientes.iter() {
-            lista_clientes.push(cliente.clone());
+            if let Some(nombre) = cliente.get_nombre() {
+                lista_clientes.push(nombre.to_owned());
+            }
         }
         lista_clientes
     }
@@ -443,7 +444,7 @@ impl Servidor {
             },
             EventoConexion::USERS => {
                 let usuarios = Servidor::obtener_usuarios(mutex_clientes);
-                util::mandar_mensaje(&socket, serde_json::to_string(&usuarios).unwrap()).unwrap();
+                util::mandar_mensaje(&socket, usuarios.join(" ")).unwrap();
                 Ok(())
             },
             EventoConexion::MESSAGE => {
