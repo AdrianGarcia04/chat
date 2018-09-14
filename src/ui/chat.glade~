@@ -14,6 +14,7 @@
     <property name="default_width">880</property>
     <property name="default_height">500</property>
     <property name="hide_titlebar_when_maximized">True</property>
+    <property name="icon">rust_logo.png</property>
     <child>
       <placeholder/>
     </child>

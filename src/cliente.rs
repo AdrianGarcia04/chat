@@ -5,10 +5,11 @@ extern crate glib;
 use chat::red;
 use std::thread;
 use std::net::TcpStream;
-use std::io::Write;
+use std::io::{Error, Write};
 use std::cell::RefCell;
 use std::sync::{mpsc, mpsc::Receiver, mpsc::Sender, Arc, Mutex};
 use gtk::prelude::*;
+use std::path::Path;
 
 pub struct Cliente {
     socket: Option<TcpStream>,
@@ -24,9 +25,10 @@ impl Cliente {
         }
     }
 
-    pub fn conectar(&mut self, direccion: &str) {
-        let socket = TcpStream::connect(direccion).expect("Error al conectar cliente");
+    pub fn conectar(&mut self, direccion: &str) -> Result<(), Error> {
+        let socket = TcpStream::connect(direccion)?;
         self.socket = Some(socket);
+        Ok(())
     }
 
     pub fn escribe(&mut self, mensaje: &str) {
@@ -83,12 +85,20 @@ fn main() {
         println!("Error al inicializar GTK.");
         return;
     }
+
+    gtk::Window::set_default_icon_from_file(Path::new("./src/ui/rust_logo.png")).unwrap();
     let dialog_glade = include_str!("ui/dialog.glade");
     let builder = gtk::Builder::new_from_string(dialog_glade);
 
     let dialogo: gtk::Dialog = builder.get_object("dialog").unwrap();
     let boton_conectar: gtk::Button = builder.get_object("boton_conectar").unwrap();
     let input_direccion: gtk::Entry = builder.get_object("input_direccion").unwrap();
+
+    let dialogo_error_glade = include_str!("ui/dialog_error.glade");
+    let builder = gtk::Builder::new_from_string(dialogo_error_glade);
+    let dialog_error: gtk::Dialog = builder.get_object("dialog_error").unwrap();
+
+    let boton_reconectar: gtk::Button = builder.get_object("boton_reconectar").unwrap();
 
     let chat_glade = include_str!("ui/chat.glade");
     let builder = gtk::Builder::new_from_string(chat_glade);
@@ -103,6 +113,11 @@ fn main() {
     });
     dialogo.show();
 
+    dialogo.connect_delete_event(|_, _| {
+        gtk::main_quit();
+        Inhibit(false)
+    });
+
     let cliente = Arc::new(Mutex::new(Cliente::new()));
     let cliente_ref = Arc::clone(&cliente);
 
@@ -111,14 +126,27 @@ fn main() {
         boton_conectar_clon.emit_activate();
     });
 
+    let dialog_error_clon = dialog_error.clone();
     boton_conectar.connect_clicked(move |_| {
         if let Some(direccion) = input_direccion.get_text() {
             let mut cliente = cliente_ref.lock().unwrap();
-            cliente.conectar(&direccion);
-            cliente.enviar_clon_a_escuchas();
-            dialogo.hide();
-            window.show_all();
+            match cliente.conectar(&direccion) {
+                Ok(_) => {
+                    cliente.enviar_clon_a_escuchas();
+                    dialogo.hide();
+                    window.show_all();
+                },
+                Err(_) => {
+                    dialog_error_clon.show();
+                    input_direccion.set_text("");
+                }
+            }
         }
+    });
+
+    let dialog_error_clon = dialog_error.clone();
+    boton_reconectar.connect_clicked(move |_| {
+        dialog_error_clon.hide();
     });
 
     let boton_enviar_clon = boton_enviar.clone();
@@ -137,7 +165,7 @@ fn main() {
     });
 
     let (tx2, rx2) = mpsc::channel();
-    let lista_mensajes: gtk::TextView = builder.get_object("lista_mensajes").unwrap();
+    let lista_mensajes: gtk::TextView = builder.get_object("sala_principal_mensajes").unwrap();
     GLOBAL.with(|global| {
         *global.borrow_mut() = Some((lista_mensajes.get_buffer().expect("Error al obtener buffer del text view"),
                                     rx2))
@@ -154,7 +182,6 @@ fn main() {
                 glib::idle_add(recibir);
             }
             else {
-                println!("Rompiendo hilo");
                 break;
             }
         }
