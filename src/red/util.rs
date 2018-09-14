@@ -22,15 +22,15 @@ pub fn obtener_evento_conexion(mut socket: &TcpStream) -> EventoConexion {
                     evento
                 }
                 else {
-                    EventoConexion::EventoInvalido
+                    EventoConexion::INVALID
                 }
             }
             else {
-                EventoConexion::Desconexion
+                EventoConexion::ERROR
             }
         },
         _ => {
-            EventoConexion::EventoInvalido
+            EventoConexion::INVALID
         }
     }
 }
@@ -66,7 +66,7 @@ pub fn obtener_mensaje_cliente(mut socket: &TcpStream)
                         Ok((evento, argumentos))
                     },
                     Err(_) => {
-                        Ok((EventoConexion::EventoInvalido, Vec::new()))
+                        Ok((EventoConexion::INVALID, Vec::new()))
                     }
                 }
             }
