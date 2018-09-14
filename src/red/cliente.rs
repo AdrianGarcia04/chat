@@ -65,4 +65,16 @@ impl Clone for Cliente {
             estado: self.estado.clone()
         }
     }
- }
+}
+
+
+impl PartialEq for Cliente {
+
+    fn eq(&self, other: &Cliente) -> bool {
+        self.direccion == other.direccion || self.nombre == other.nombre
+    }
+
+    fn ne(&self, other: &Cliente) -> bool {
+        self.direccion != other.direccion && self.nombre != other.nombre
+    }
+}

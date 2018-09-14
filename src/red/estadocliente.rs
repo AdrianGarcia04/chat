@@ -1,6 +1,7 @@
 use std::str::FromStr;
+use std::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum EstadoCliente {
     ACTIVE,
     AWAY,
@@ -17,5 +18,11 @@ impl FromStr for EstadoCliente {
             "BUSY" => Ok(EstadoCliente::BUSY),
             _ => Err(()),
         }
+    }
+}
+
+impl fmt::Display for EstadoCliente {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
