@@ -22,15 +22,15 @@ pub fn obtener_evento_conexion(mut socket: &TcpStream) -> EventoConexion {
                     evento
                 }
                 else {
-                    EventoConexion::EventoInvalido
+                    EventoConexion::INVALID
                 }
             }
             else {
-                EventoConexion::Desconexion
+                EventoConexion::ERROR
             }
         },
         _ => {
-            EventoConexion::EventoInvalido
+            EventoConexion::INVALID
         }
     }
 }
@@ -41,6 +41,34 @@ pub fn obtener_mensaje_conexion(mut socket: &TcpStream) -> Result<String, Error>
         Ok(count) => {
             if count > 0 {
                 Ok(mensaje_de_buffer(&buffer))
+            }
+            else {
+                Err(Error::new(ErrorKind::ConnectionAborted, "El cliente terminó la conexión"))
+            }
+        },
+        _ => {
+            Err(Error::new(ErrorKind::ConnectionAborted, "El cliente terminó la conexión"))
+        }
+    }
+}
+
+pub fn obtener_mensaje_cliente(mut socket: &TcpStream)
+    -> Result<(EventoConexion, Vec<String>), Error> {
+    let mut buffer = [0; 180];
+    match socket.read(&mut buffer) {
+        Ok(count) => {
+            if count > 0 {
+                let mensaje = mensaje_de_buffer(&buffer);
+                let mut argumentos: Vec<String> = mensaje.split(" ").map(|s| s.to_string()).collect();
+                let evento = argumentos.remove(0).parse::<EventoConexion>();
+                match evento {
+                    Ok(evento) => {
+                        Ok((evento, argumentos))
+                    },
+                    Err(_) => {
+                        Ok((EventoConexion::INVALID, Vec::new()))
+                    }
+                }
             }
             else {
                 Err(Error::new(ErrorKind::ConnectionAborted, "El cliente terminó la conexión"))

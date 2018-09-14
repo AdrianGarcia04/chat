@@ -3,13 +3,18 @@ use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum EventoConexion {
-    EmpiezaConexion,
-    Mensaje,
-    TerminaConexion,
-    CambiarSala,
-    NuevaSala,
-    EventoInvalido,
-    Desconexion,
+    IDENTIFY,
+    STATUS,
+    USERS,
+    MESSAGE,
+    PUBLICMESSAGE,
+    CREATEROOM,
+    INVITE,
+    JOINROOM,
+    ROOMESSAGE,
+    DISCONNECT,
+    INVALID,
+    ERROR,
 }
 
 impl FromStr for EventoConexion {
@@ -17,12 +22,18 @@ impl FromStr for EventoConexion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "EmpiezaConexion" => Ok(EventoConexion::EmpiezaConexion),
-            "Mensaje" => Ok(EventoConexion::Mensaje),
-            "TerminaConexion" => Ok(EventoConexion::TerminaConexion),
-            "EventoInvalido" => Ok(EventoConexion::EventoInvalido),
-            "CambiarSala" => Ok(EventoConexion::CambiarSala),
-            "NuevaSala" => Ok(EventoConexion::NuevaSala),
+            "IDENTIFY" => Ok(EventoConexion::IDENTIFY),
+            "STATUS" => Ok(EventoConexion::STATUS),
+            "USERS" => Ok(EventoConexion::USERS),
+            "MESSAGE" => Ok(EventoConexion::MESSAGE),
+            "PUBLICMESSAGE" => Ok(EventoConexion::PUBLICMESSAGE),
+            "CREATEROOM" => Ok(EventoConexion::CREATEROOM),
+            "INVITE" => Ok(EventoConexion::INVITE),
+            "JOINROOM" => Ok(EventoConexion::JOINROOM),
+            "ROOMESSAGE" => Ok(EventoConexion::ROOMESSAGE),
+            "DISCONNECT" => Ok(EventoConexion::DISCONNECT),
+            "INVALID" => Ok(EventoConexion::INVALID),
+            "ERROR" => Ok(EventoConexion::ERROR),
             _ => Err(()),
         }
     }
