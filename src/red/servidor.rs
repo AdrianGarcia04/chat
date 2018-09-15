@@ -219,26 +219,42 @@ impl Servidor {
 
     fn envia_mensaje_privado(cliente: &Cliente, mutex_clientes: &MutexCliente, mut argumentos: Vec<String>)
         -> Result<String, Error> {
-        let destinatario = Servidor::obtener_destinatario(mutex_clientes, &mut argumentos)?;
-        let mensaje = argumentos.join(" ");
-        if mensaje.len() > 0 {
-            util::mandar_mensaje(destinatario.get_socket(), mensaje)?;
+        if let Some(remitente) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes) {
+            let destinatario = Servidor::obtener_destinatario(mutex_clientes, &mut argumentos)?;
+            let mut mensaje = argumentos.join(" ");
+            if mensaje.len() > 0 {
+                let remitente = format!("{}: ", remitente);
+                mensaje = remitente + &mensaje;
+                util::mandar_mensaje(destinatario.get_socket(), mensaje)?;
+            }
+            let confirmacion = format!("Mensaje enviado");
+            return Ok(confirmacion);
         }
-        let confirmacion = format!("Mensaje enviado");
-        return Ok(confirmacion);
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused,
+                format!("Debes identificarte para enviar un mensaje")))
+        }
     }
 
     fn envia_mensaje_publico(cliente: &Cliente, mutex_clientes: &MutexCliente, argumentos: Vec<String>)
         -> Result<String, Error> {
-        let mensaje = argumentos.join(" ");
-        if mensaje.len() > 0 {
-            let mut clientes = mutex_clientes.lock().unwrap();
-            for cliente_iter in clientes.iter_mut() {
-                util::mandar_mensaje(cliente_iter.get_socket(), mensaje.clone()).unwrap();
+        if let Some(remitente) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes) {
+            let mut mensaje = argumentos.join(" ");
+            if mensaje.len() > 0 {
+                let remitente = format!("Público-{}: ", remitente);
+                mensaje = remitente + &mensaje;
+                let mut clientes = mutex_clientes.lock().unwrap();
+                for cliente_iter in clientes.iter_mut() {
+                    util::mandar_mensaje(cliente_iter.get_socket(), mensaje.clone()).unwrap();
+                }
             }
+            let confirmacion = format!("Mensaje enviado");
+            return Ok(confirmacion);
         }
-        let confirmacion = format!("Mensaje enviado");
-        return Ok(confirmacion);
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused,
+                format!("Debes identificarte para enviar un mensaje")))
+        }
     }
 
     fn obtener_destinatario(mutex_clientes: &MutexCliente, argumentos: &mut Vec<String>)
@@ -298,24 +314,34 @@ impl Servidor {
                 "No se especificó la sala"));
         }
         let nombre_sala = argumentos.remove(0);
-        let mut salas = mutex_salas.lock().unwrap();
-        for sala in salas.iter_mut() {
-            if sala.get_nombre().eq(&nombre_sala) {
-                if sala.es_propietario(cliente.get_direccion()) {
-                    let invitados = Servidor::buscar_clientes(mutex_clientes, argumentos);
-                    for cliente_iter in invitados.iter() {
-                        sala.invitar_miembro(cliente_iter.get_direccion(), cliente_iter.get_socket());
+        if let Some(nombre_anfitrion) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes){
+            let mut salas = mutex_salas.lock().unwrap();
+            for sala in salas.iter_mut() {
+                if sala.get_nombre().eq(&nombre_sala) {
+                    if sala.es_propietario(cliente.get_direccion()) {
+                        let invitacion = format!("Invitación de unirse a la sala {} por {}",
+                        &nombre_sala, nombre_anfitrion);
+                        let invitados = Servidor::buscar_clientes(mutex_clientes, argumentos);
+                        for cliente_iter in invitados.iter() {
+                            sala.invitar_miembro(cliente_iter.get_direccion(), cliente_iter.get_socket());
+                            util::mandar_mensaje(cliente_iter.get_socket(),
+                                invitacion.to_owned()).unwrap();
+                        }
+                        let confirmacion = format!("Invitaciones de la sala {} enviadas", nombre_sala);
+                        return Ok(confirmacion);
                     }
-                    let confirmacion = format!("Invitaciones de la sala {} enviadas", nombre_sala);
-                    return Ok(confirmacion);
+                    else {
+                        return  Err(Error::new(ErrorKind::ConnectionRefused,
+                            "Debes ser propietario de la sala para invitar personas a unirse"));
+                        }
+                    }
                 }
-                else {
-                    return  Err(Error::new(ErrorKind::ConnectionRefused,
-                                "Debes ser propietario de la sala para invitar personas a unirse"));
-                }
-            }
+                Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
         }
-        Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused,
+                format!("Debes identificarte para invitar usuarios")))
+        }
     }
 
     fn buscar_clientes(mutex_clientes: &MutexCliente, nombres_clientes: Vec<String>) -> Vec<Cliente> {
@@ -356,32 +382,40 @@ impl Servidor {
         Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
     }
 
-    fn envia_mensaje_sala(cliente: &Cliente, mutex_salas: &MutexSala, mut argumentos: Vec<String>)
-        -> Result<String, Error> {
+    fn envia_mensaje_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
+        mut argumentos: Vec<String>) -> Result<String, Error> {
         if argumentos.len() == 0 {
             return Err(Error::new(ErrorKind::ConnectionRefused,
                 "No se especificó la sala"));
         }
         let nombre_sala = argumentos.remove(0);
-        let mut salas = mutex_salas.lock().unwrap();
-        for sala in salas.iter_mut() {
-            if sala.get_nombre().eq(&nombre_sala) {
-                if sala.cliente_es_miembro(cliente.get_direccion()) {
-                    let mensaje = argumentos.join(" ");
-                    if mensaje.len() > 0 {
-                        for (_, socket_miembro) in sala.get_miembros().iter_mut() {
-                            util::mandar_mensaje(socket_miembro, mensaje.clone())?;
+        if let Some(remitente) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes) {
+            let mut salas = mutex_salas.lock().unwrap();
+            for sala in salas.iter_mut() {
+                if sala.get_nombre().eq(&nombre_sala) {
+                    if sala.cliente_es_miembro(cliente.get_direccion()) {
+                        let mut mensaje = argumentos.join(" ");
+                        if mensaje.len() > 0 {
+                            let remitente = format!("{}-{}: ", &nombre_sala, &remitente);
+                            mensaje = remitente + &mensaje;
+                            for (_, socket_miembro) in sala.get_miembros().iter_mut() {
+                                util::mandar_mensaje(socket_miembro, mensaje.clone())?;
+                            }
+                        }
+                        return Ok(String::from("Mensaje enviado"));
+                    }
+                    else {
+                        return  Err(Error::new(ErrorKind::ConnectionRefused,
+                            "No eres miembro de esa sala"));
                         }
                     }
-                    return Ok(String::from("Mensaje enviado"));
                 }
-                else {
-                    return  Err(Error::new(ErrorKind::ConnectionRefused,
-                                "No eres miembro de esa sala"));
-                }
-            }
+                Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
         }
-        Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused,
+                format!("Debes identificarte enviar mensajes a la sala")))
+        }
     }
 
     fn desconectar_cliente(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala) {
@@ -399,6 +433,21 @@ impl Servidor {
             }
         }
         cliente.detener();
+    }
+
+    fn obtener_nombre_cliente(cliente: &Cliente, mutex_clientes: &MutexCliente) -> Option<String> {
+        let clientes = mutex_clientes.lock().unwrap();
+        let indice_cliente = clientes.iter().
+                position(|cliente_iter| cliente.eq(cliente_iter)).unwrap();
+        let cliente = &clientes[indice_cliente];
+        match cliente.get_nombre() {
+            Some(nombre) => {
+                Some(nombre.to_owned())
+            },
+            None => {
+                None
+            },
+        }
     }
 
     fn reaccionar(cliente: Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala)
@@ -467,7 +516,7 @@ impl Servidor {
                 Ok(())
             },
             EventoConexion::ROOMESSAGE => {
-                let mensaje = match Servidor::envia_mensaje_sala(&cliente, mutex_salas, argumentos) {
+                let mensaje = match Servidor::envia_mensaje_sala(&cliente, mutex_clientes, mutex_salas, argumentos) {
                     Ok(confirmacion) => confirmacion,
                     Err(error) => error.to_string(),
                 };
