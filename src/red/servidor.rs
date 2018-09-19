@@ -42,16 +42,11 @@ impl Servidor {
         self.anunciar_escuchas(EventoServidor::ServidorArriba);
         self.aceptando_conexiones = true;
         escucha_tcp.set_nonblocking(true).expect("Error al inicializar el non-blocking");
-        let (tx, rx) = mpsc::channel::<EventoServidor>();
 
         while self.aceptando_conexiones {
             if let Ok((socket, direccion)) = escucha_tcp.accept() {
                 let mut cliente = self.aceptar_cliente(socket, direccion);
                 self.maneja_conexion(cliente);
-            }
-
-            if let Ok(evento) = rx.try_recv() {
-                self.maneja_evento_servidor(evento);
             }
 
             thread::sleep(time::Duration::from_millis(500));
@@ -63,19 +58,6 @@ impl Servidor {
         let mut clientes = self.clientes.lock().unwrap();
         clientes.push(cliente.clone());
         cliente
-    }
-
-
-    fn maneja_evento_servidor(&mut self, evento: EventoServidor) {
-        self.anunciar_escuchas(evento.clone());
-        match evento {
-            EventoServidor::ServidorAbajo => {
-                self.detener();
-            },
-            _ => {
-
-            }
-        }
     }
 
     fn maneja_conexion(&mut self, cliente: Cliente) {
@@ -225,10 +207,14 @@ impl Servidor {
             if mensaje.len() > 0 {
                 let remitente = format!("{}: ", remitente);
                 mensaje = remitente + &mensaje;
+                let confirmacion = mensaje.clone();
                 util::mandar_mensaje(destinatario.get_socket(), mensaje)?;
+                Ok(confirmacion)
             }
-            let confirmacion = format!("Mensaje enviado");
-            return Ok(confirmacion);
+            else {
+                Err(Error::new(ErrorKind::ConnectionRefused,
+                    format!("No se identificó el contenido del mensaje")))
+            }
         }
         else {
             Err(Error::new(ErrorKind::ConnectionRefused,
@@ -247,9 +233,12 @@ impl Servidor {
                 for cliente_iter in clientes.iter_mut() {
                     util::mandar_mensaje(cliente_iter.get_socket(), mensaje.clone()).unwrap();
                 }
+                Ok(String::new())
             }
-            let confirmacion = format!("Mensaje enviado");
-            return Ok(confirmacion);
+            else {
+                Err(Error::new(ErrorKind::ConnectionRefused,
+                    format!("No se identificó el contenido del mensaje")))
+            }
         }
         else {
             Err(Error::new(ErrorKind::ConnectionRefused,
@@ -357,29 +346,37 @@ impl Servidor {
         encontrados
     }
 
-    fn unirse_a_sala(cliente: &Cliente, mutex_salas: &MutexSala, mut argumentos: Vec<String>)
-        -> Result<String, Error> {
+    fn unirse_a_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
+        mut argumentos: Vec<String>) -> Result<String, Error> {
         if argumentos.len() == 0 {
             return Err(Error::new(ErrorKind::ConnectionRefused,
                 "No se especificó la sala"));
         }
-        let nombre_sala = argumentos.remove(0);
-        let mut salas = mutex_salas.lock().unwrap();
-        for sala in salas.iter_mut() {
-            if sala.get_nombre().eq(&nombre_sala) {
-                if sala.cliente_es_invitado(cliente.get_direccion()) {
-                    let invitado = cliente.get_socket().try_clone().expect("Error al clonar socket");
-                    sala.agregar_miembro(cliente.get_direccion(), &invitado);
-                    let confirmacion = format!("Te uniste a la sala: {}", nombre_sala);
-                    return Ok(confirmacion);
-                }
-                else {
-                    return  Err(Error::new(ErrorKind::ConnectionRefused,
+        if let Some(nombre_cliente) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes) {
+            let nombre_sala = argumentos.remove(0);
+            let mut salas = mutex_salas.lock().unwrap();
+            for sala in salas.iter_mut() {
+                if sala.get_nombre().eq(&nombre_sala) {
+                    if sala.cliente_es_invitado(cliente.get_direccion()) {
+                        let invitado = cliente.get_socket().try_clone().expect("Error al clonar socket");
+                        sala.agregar_miembro(cliente.get_direccion(), &invitado);
+                        let mensaje = format!("{} se unió a la sala {}", nombre_cliente, nombre_sala);
+                        for (_, socket_miembro) in sala.get_miembros().iter_mut() {
+                            util::mandar_mensaje(socket_miembro, mensaje.clone())?;
+                        }
+                        return Ok(String::new());
+                    }
+                    else {
+                        return Err(Error::new(ErrorKind::ConnectionRefused,
                                 "No estás invitado para unirte"));
+                    }
                 }
             }
+            return Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"));
         }
-        Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
+        else {
+            Err(Error::new(ErrorKind::ConnectionRefused, "Debes identificarte primero"))
+        }
     }
 
     fn envia_mensaje_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
@@ -401,16 +398,20 @@ impl Servidor {
                             for (_, socket_miembro) in sala.get_miembros().iter_mut() {
                                 util::mandar_mensaje(socket_miembro, mensaje.clone())?;
                             }
+                            return Ok(String::new());
                         }
-                        return Ok(String::from("Mensaje enviado"));
+                        else {
+                            return Err(Error::new(ErrorKind::ConnectionRefused,
+                                format!("No se identificó el contenido del mensaje")));
+                        }
                     }
                     else {
                         return  Err(Error::new(ErrorKind::ConnectionRefused,
                             "No eres miembro de esa sala"));
-                        }
                     }
                 }
-                Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
+            }
+            Err(Error::new(ErrorKind::ConnectionRefused, "La sala no existe"))
         }
         else {
             Err(Error::new(ErrorKind::ConnectionRefused,
@@ -508,7 +509,7 @@ impl Servidor {
                 Ok(())
             },
             EventoConexion::JOINROOM => {
-                let mensaje = match Servidor::unirse_a_sala(&cliente, mutex_salas, argumentos) {
+                let mensaje = match Servidor::unirse_a_sala(&cliente, mutex_clientes, mutex_salas, argumentos) {
                     Ok(confirmacion) => confirmacion,
                     Err(error) => error.to_string(),
                 };
@@ -527,18 +528,18 @@ impl Servidor {
                 Err(Error::new(ErrorKind::ConnectionAborted, "El cliente terminó la conexión"))
             },
             EventoConexion::INVALID => {
-                let mensaje = String::from("Mensaje inválido, lista de mensajes válidos:\n
-                    IDENTIFY nombre \n
-                    STATUS [ACTIVE, AWAY, BUSY] \n
-                    USERS \n
-                    MESSAGE destinatario mensaje \n
-                    PUBLICMESSAGE mensaje \n
-                    CREATEROOM nombre_sala \n
-                    INVITE nombre_sala usuarios... \n
-                    JOINROOM nombre_sala \n
-                    ROOMESSAGE nombre_sala mensaje \n
-                    DISCONNECT \n
-                ");
+                let mut mensaje = String::new();
+                mensaje += "Mensaje inválido, lista de mensajes válidos:\n";
+                mensaje += "IDENTIFY nombre\n";
+                mensaje += "STATUS [ACTIVE, AWAY, BUSY]\n";
+                mensaje += "USERS\n";
+                mensaje += "MESSAGE destinatario mensaje\n";
+                mensaje += "PUBLICMESSAGE mensaje\n";
+                mensaje += "CREATEROOM nombre_sala\n";
+                mensaje += "INVITE nombre_sala usuarios...\n";
+                mensaje += "JOINROOM nombre_sala\n";
+                mensaje += "ROOMESSAGE nombre_sala mensaje\n";
+                mensaje += "DISCONNECT\n";
                 util::mandar_mensaje(cliente.get_socket(), mensaje).unwrap();
                 Ok(())
             },

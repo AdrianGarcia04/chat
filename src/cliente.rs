@@ -159,6 +159,7 @@ fn main() {
         let mut cliente = cliente_ref.lock().unwrap();
         if let Some(mensaje) = input_mensaje.get_text() {
             input_mensaje.set_text("");
+            let mensaje = mensaje + "\n";
             cliente.escribe(&mensaje);
         }
         drop(cliente);
