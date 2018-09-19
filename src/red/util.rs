@@ -9,8 +9,10 @@ pub const SALTO_DE_LINEA: u8 = 10;
 pub fn mensaje_de_buffer(buffer: &[u8; 180]) -> String {
     let mut mensaje: Vec<u8> = buffer.to_vec().into_iter()
         .filter(|&x| x != CHAR_NULL).collect();
-    if mensaje[mensaje.len() - 1] == SALTO_DE_LINEA {
-        mensaje.pop();
+    if mensaje.len() > 1 {
+        if mensaje[mensaje.len() - 1] == SALTO_DE_LINEA {
+            mensaje.pop();
+        }
     }
     let mensaje = String::from_utf8(mensaje).unwrap();
     mensaje
