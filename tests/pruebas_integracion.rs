@@ -7,7 +7,7 @@ use std::net::TcpStream;
 #[test]
 fn t1_acepta_conexiones() {
     let puerto = "9090";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
 
@@ -60,7 +60,7 @@ fn t1_acepta_conexiones() {
 #[test]
 fn t2_asignar_estado() {
     let puerto = "9091";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha = servidor.nuevo_escucha();
 
     let hilo_servidor = thread::Builder::new().name("t2-servidor".into());
@@ -113,7 +113,7 @@ fn t2_asignar_estado() {
 #[test]
 fn t3_obtener_usuarios() {
     let puerto = "9092";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
     let escucha3 = servidor.nuevo_escucha();
@@ -187,7 +187,7 @@ fn t3_obtener_usuarios() {
 #[test]
 fn t4_manda_mensajes_publicos() {
     let puerto = "9093";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
 
@@ -242,7 +242,7 @@ fn t4_manda_mensajes_publicos() {
 #[test]
 fn t5_manda_mensajes_privados() {
     let puerto = "9094";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
 
@@ -310,7 +310,7 @@ fn t5_manda_mensajes_privados() {
 #[test]
 fn t6_crea_salas() {
     let puerto = "9095";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha = servidor.nuevo_escucha();
 
     let hilo_servidor = thread::Builder::new().name("t6-servidor".into());
@@ -357,7 +357,7 @@ fn t6_crea_salas() {
 #[test]
 fn t7_enviar_invitaciones() {
     let puerto = "9096";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
 
@@ -422,7 +422,7 @@ fn t7_enviar_invitaciones() {
 #[test]
 fn t8_aceptar_invitacion() {
     let puerto = "9097";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
 
@@ -508,7 +508,7 @@ fn t8_aceptar_invitacion() {
 #[test]
 fn t9_manda_mensaje_sala() {
     let puerto = "9098";
-    let mut servidor = Servidor::new("localhost", puerto);
+    let mut servidor = Servidor::new(puerto);
     let escucha1 = servidor.nuevo_escucha();
     let escucha2 = servidor.nuevo_escucha();
     let escucha3 = servidor.nuevo_escucha();
