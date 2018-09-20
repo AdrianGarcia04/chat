@@ -10,6 +10,13 @@ type MutexCliente = Arc<Mutex<Vec<Cliente>>>;
 type MutexSala = Arc<Mutex<Vec<Sala>>>;
 type CanalServidor = mpsc::Sender<EventoServidor>;
 
+/// Representación abstracta del servidor.
+/// Los servidores tienen una dirección IP asociada, un contador de referencias atómico
+/// [`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
+/// que contiene un primitiva de exclusión mutua
+/// [`std::sync::Mutex`](https://doc.rust-lang.org/std/sync/struct.Mutex.html) de un vector de clientes, y a su vez
+/// uno de salas, así como un vector de escuchas y un boolean que indica si el servidor se
+/// encuentra aceptando conexiones.
 pub struct Servidor {
     direccion: String,
     clientes: MutexCliente,
@@ -20,6 +27,8 @@ pub struct Servidor {
 
 impl Servidor {
 
+    /// Crea una nueva instancia de un servidor, recibiendo un puerto y creando
+    /// una dirección IP donde escuchar conexiones.
     pub fn new(puerto: &str) -> Servidor {
         let direccion = format!("0.0.0.0:{}", puerto);
         Servidor {
@@ -31,6 +40,13 @@ impl Servidor {
         }
     }
 
+    /// Intenta enlazarse con la dirección IP creada, para posteriormente comenzar a escuchar
+    /// peticiones en dicha dirección. Al recibir una petición nueva, crea un nuevo cliente
+    /// y lanza un hilo de ejecución que se encargue de escuchar a dicho cliente. El método se
+    /// realiza de forma repetida hasta que se modifique el valor de la variable
+    /// "aceptando_conexiones".
+    /// El servidor toma "pausas" de 500 milisegundos para evitar consumir recursos de manera
+    /// excesiva.
     pub fn comenzar(&mut self) {
         let escucha_tcp = match TcpListener::bind(&self.direccion) {
             Ok(escucha) => escucha,
@@ -54,7 +70,8 @@ impl Servidor {
         }
     }
 
-    fn aceptar_cliente(&mut self, socket: TcpStream, direccion: SocketAddr) -> Cliente {
+    /// Crea un nuevo cliente y lo guarda dentro del vector de clientes, regresando una copia
+    pub fn aceptar_cliente(&mut self, socket: TcpStream, direccion: SocketAddr) -> Cliente {
         let cliente = Cliente::new(None, socket, direccion);
         let mut clientes = self.clientes.lock().unwrap();
         clientes.push(cliente.clone());
@@ -62,7 +79,11 @@ impl Servidor {
         cliente
     }
 
-    fn maneja_conexion(&mut self, cliente: Cliente) {
+    /// Lanza un hilo de ejecución encargado de escuchar al cliente recibido y reaccionar
+    /// dependiendo de los eventos que el cliente especifique. En caso de un error o que el
+    /// mismo cliente interrumpa la conexión, el servidor lo desconecta y lo elimina
+    /// de la lista de clientes.
+    pub fn maneja_conexion(&mut self, cliente: Cliente) {
         let clientes = Arc::clone(&self.clientes);
         let salas = Arc::clone(&self.salas);
         thread::spawn(move || loop {
@@ -81,7 +102,8 @@ impl Servidor {
         );
     }
 
-    fn detener(&mut self) {
+    /// Detiene la ejecución del servidor, eliminando de la memoria a los clientes y los escuchas.
+    pub fn detener(&mut self) {
         info!(target: "Servidor", "Desconectando servidor");
         self.eliminar_clientes();
         info!(target: "Servidor", "Clientes eliminados");
@@ -91,6 +113,8 @@ impl Servidor {
         info!(target: "Servidor", "Servidor desconectado");
     }
 
+    /// Crea una nueva tupla escucha-emisor, guardando el emisor en la lista de escuchas y
+    /// regresando a su correspondiente escucha.
     pub fn nuevo_escucha(&mut self) -> mpsc::Receiver<EventoServidor> {
         info!(target: "Servidor", "Creando nuevo escucha");
         let (tx, rx) = mpsc::channel::<EventoServidor>();
@@ -98,14 +122,16 @@ impl Servidor {
         rx
     }
 
-    fn anunciar_escuchas(&mut self, evento: EventoServidor) {
+    /// Anuncia a los escuchas existentens sobre un evento ocurrido en el servidor.
+    pub fn anunciar_escuchas(&mut self, evento: EventoServidor) {
         info!(target: "Servidor", "Anunciando escuchas del evento: {:?}", evento);
         for escucha in &self.escuchas {
             &escucha.send(evento.clone());
         }
     }
 
-    fn eliminar_escuchas(&mut self) {
+    /// Elimina de memoria a los escuchas creados.
+    pub fn eliminar_escuchas(&mut self) {
         info!(target: "Servidor", "Eliminando escuchas");
         self.anunciar_escuchas(EventoServidor::ServidorAbajo);
         for escucha in self.escuchas.iter() {
@@ -113,7 +139,9 @@ impl Servidor {
         }
     }
 
-    fn eliminar_clientes(&mut self) {
+
+    /// Elimina de memoria a los clientes creados.
+    pub fn eliminar_clientes(&mut self) {
         info!(target: "Servidor", "Eliminando clientes");
         let clientes = Arc::clone(&self.clientes);
         let mut clientes = clientes.lock().unwrap();
@@ -125,7 +153,9 @@ impl Servidor {
         }
     }
 
-    fn obtener_nombre(mut argumentos: Vec<String>, mutex_clientes: &MutexCliente) -> Result<String, Error> {
+    /// Regresa un nombre único con longitud entre 1 - 20 caracteres dentro de un vector de argumentos.
+    /// Si el nombre no cumple con alguna condición, regresa un error.
+    pub fn obtener_nombre(mut argumentos: Vec<String>, mutex_clientes: &MutexCliente) -> Result<String, Error> {
         if argumentos.len() != 0 {
             let nombre = argumentos.remove(0);
             if nombre.len() < 1 || nombre.len() > 20 {
@@ -144,7 +174,9 @@ impl Servidor {
         }
     }
 
-    fn obtener_estado(mut argumentos: Vec<String>) -> Result<EstadoCliente, Error> {
+    /// Regresa un estado válido dentro de un vector de argumentos.
+    /// Si el estado no cumple con alguna condición, regresa un error.
+    pub fn obtener_estado(mut argumentos: Vec<String>) -> Result<EstadoCliente, Error> {
         if argumentos.len() != 0 {
             let estado = argumentos.remove(0);
             match estado.parse::<EstadoCliente>() {
@@ -162,7 +194,8 @@ impl Servidor {
         }
     }
 
-    fn es_nombre_unico(nombre: &str, mutex_clientes: &MutexCliente) -> bool {
+    /// Determina si un nombre es único entre todos los clientes ya identificados.
+    pub fn es_nombre_unico(nombre: &str, mutex_clientes: &MutexCliente) -> bool {
         let mut clientes = mutex_clientes.lock().unwrap();
         for cliente in clientes.iter_mut() {
             if let Some(nombre_cliente) = cliente.get_nombre() {
@@ -174,7 +207,8 @@ impl Servidor {
         true
     }
 
-    fn cambiar_nombre_usuario(cliente: &Cliente, mutex_clientes: &MutexCliente, argumentos: Vec<String>)
+    /// Define el nuevo nombre único de un cliente.
+    pub fn cambiar_nombre_usuario(cliente: &Cliente, mutex_clientes: &MutexCliente, argumentos: Vec<String>)
         -> Result<String, Error> {
         let nombre = Servidor::obtener_nombre(argumentos, mutex_clientes)?;
         let mut clientes = mutex_clientes.lock().unwrap();
@@ -190,7 +224,8 @@ impl Servidor {
         Ok(confirmacion)
     }
 
-    fn cambiar_estado_usuario(cliente: &Cliente, mutex_clientes: &MutexCliente, argumentos: Vec<String>)
+    /// Define el nuevo estado de un cliente.
+    pub fn cambiar_estado_usuario(cliente: &Cliente, mutex_clientes: &MutexCliente, argumentos: Vec<String>)
         -> Result<String, Error> {
         if let Some(nombre_cliente) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes) {
             let estado = Servidor::obtener_estado(argumentos)?;
@@ -212,7 +247,8 @@ impl Servidor {
         }
     }
 
-    fn obtener_usuarios(mutex_clientes: &MutexCliente) -> Vec<String> {
+    /// Regresa un vector de nombres de los clientes identificados en el servidor.
+    pub fn obtener_usuarios(mutex_clientes: &MutexCliente) -> Vec<String> {
         let clientes = mutex_clientes.lock().unwrap();
         let mut lista_clientes = Vec::new();
         for cliente in clientes.iter() {
@@ -223,7 +259,8 @@ impl Servidor {
         lista_clientes
     }
 
-    fn envia_mensaje_privado(cliente: &Cliente, mutex_clientes: &MutexCliente, mut argumentos: Vec<String>)
+    /// Envía un mensaje privado a un cliente en específico.
+    pub fn envia_mensaje_privado(cliente: &Cliente, mutex_clientes: &MutexCliente, mut argumentos: Vec<String>)
         -> Result<String, Error> {
         if let Some(remitente) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes) {
             let mut destinatario = Servidor::obtener_destinatario(mutex_clientes, &mut argumentos)?;
@@ -246,7 +283,9 @@ impl Servidor {
         }
     }
 
-    fn envia_mensaje_publico(cliente: &Cliente, mutex_clientes: &MutexCliente, argumentos: Vec<String>)
+    /// Envía un mensaje público a todos los clientes en el servidor.
+    /// Regresa un error si el remitente no está identificado ó no se especifica un mensaje.
+    pub fn envia_mensaje_publico(cliente: &Cliente, mutex_clientes: &MutexCliente, argumentos: Vec<String>)
         -> Result<String, Error> {
         if let Some(remitente) = Servidor::obtener_nombre_cliente(&cliente, &mutex_clientes) {
             let mut mensaje = argumentos.join(" ");
@@ -270,7 +309,8 @@ impl Servidor {
         }
     }
 
-    fn obtener_destinatario(mutex_clientes: &MutexCliente, argumentos: &mut Vec<String>)
+    /// Regresa el cliente al cual se busca enviar un mensaje. Regresa un error si no se encuentra.
+    pub fn obtener_destinatario(mutex_clientes: &MutexCliente, argumentos: &mut Vec<String>)
         -> Result<Cliente, Error> {
         if argumentos.len() != 0 {
             let nombre_a_buscar = argumentos.remove(0);
@@ -290,7 +330,9 @@ impl Servidor {
         }
     }
 
-    fn crear_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
+    /// Crea una nueva sala, cuyo propietario es el creador de la misma.
+    /// Regresa un error si la sala ya existe.
+    pub fn crear_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
         mut argumentos: Vec<String>) -> Result<String, Error> {
         if argumentos.len() != 0 {
             let nombre_nueva_sala = argumentos.remove(0);
@@ -314,7 +356,8 @@ impl Servidor {
         }
     }
 
-    fn sala_es_unica(nombre: &str, mutex_salas: &MutexSala) -> bool {
+    /// Determina si el nombre de una nueva sala ya ha sido utilizado.
+    pub fn sala_es_unica(nombre: &str, mutex_salas: &MutexSala) -> bool {
         let mut salas = mutex_salas.lock().unwrap();
         for sala in salas.iter_mut() {
             if sala.get_nombre().eq(nombre) {
@@ -324,7 +367,10 @@ impl Servidor {
         true
     }
 
-    fn enviar_invitacion(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
+    /// Dado un vector de clientes y una sala, envía una invitación de unirse a la sala a cada cliente.
+    /// Regresa un error si el remitente no se ha identificado, la sala no existe o si no
+    /// se es propietario de la misma.
+    pub fn enviar_invitacion(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
         mut argumentos: Vec<String>) -> Result<String, Error> {
         if argumentos.len() == 0 {
             return Err(Error::new(ErrorKind::ConnectionRefused,
@@ -360,7 +406,8 @@ impl Servidor {
         }
     }
 
-    fn buscar_clientes(mutex_clientes: &MutexCliente, nombres_clientes: Vec<String>) -> Vec<Cliente> {
+    /// Dado un vector de nombres, busca a los clientes con dichos nombres.
+    pub fn buscar_clientes(mutex_clientes: &MutexCliente, nombres_clientes: Vec<String>) -> Vec<Cliente> {
         let clientes = mutex_clientes.lock().unwrap();
         let mut encontrados: Vec<Cliente> = Vec::new();
         for cliente in clientes.iter() {
@@ -373,7 +420,10 @@ impl Servidor {
         encontrados
     }
 
-    fn unirse_a_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
+    /// Permite que un cliente se una a una sala, notificando sobre su llegada al resto de los
+    /// miembros de la habitación.
+    /// Regresa un error si la sala no existe o no se tiene una invitación.
+    pub fn unirse_a_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
         mut argumentos: Vec<String>) -> Result<String, Error> {
         if argumentos.len() == 0 {
             return Err(Error::new(ErrorKind::ConnectionRefused,
@@ -407,7 +457,9 @@ impl Servidor {
         }
     }
 
-    fn envia_mensaje_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
+    /// Envía un mensaje a todos los miembros de una sala en específico.
+    /// Regresa un error si la sala no existe o no se es miembro de la sala.
+    pub fn envia_mensaje_sala(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala,
         mut argumentos: Vec<String>) -> Result<String, Error> {
         if argumentos.len() == 0 {
             return Err(Error::new(ErrorKind::ConnectionRefused,
@@ -447,7 +499,8 @@ impl Servidor {
         }
     }
 
-    fn desconectar_cliente(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala) {
+    /// Elimina de memoria a un cliente creado en el servidor.
+    pub fn desconectar_cliente(cliente: &Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala) {
         let mut clientes = mutex_clientes.lock().unwrap();
         let indice_cliente = clientes.iter().
                 position(|cliente_iter| cliente.eq(cliente_iter)).unwrap();
@@ -465,7 +518,8 @@ impl Servidor {
         info!(target: "Servidor", "Se desconectó al cliente {}", cliente.get_direccion());
     }
 
-    fn obtener_nombre_cliente(cliente: &Cliente, mutex_clientes: &MutexCliente) -> Option<String> {
+    /// Obtiene el nombre de un cliente existente en el servidor.
+    pub fn obtener_nombre_cliente(cliente: &Cliente, mutex_clientes: &MutexCliente) -> Option<String> {
         let clientes = mutex_clientes.lock().unwrap();
         let indice_cliente = clientes.iter().
                 position(|cliente_iter| cliente.eq(cliente_iter)).unwrap();
@@ -480,7 +534,10 @@ impl Servidor {
         }
     }
 
-    fn reaccionar(mut cliente: Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala)
+    /// Determina que acción llevar a cabo dependiendo de los mensajes enviados por un cliente.
+    /// En caso de error o que el cliente especifique su desconexión, el servidor termina la
+    /// comunicación con el cliente y lo elimina de memoria.
+    pub fn reaccionar(mut cliente: Cliente, mutex_clientes: &MutexCliente, mutex_salas: &MutexSala)
         -> Result<(), Error> {
         let (evento, argumentos) = util::obtener_mensaje_cliente(cliente.get_socket())?;
         match evento {
