@@ -86,14 +86,14 @@ pub fn obtener_mensaje_cliente(mut socket: &TcpStream)
     }
 }
 
-pub fn mandar_evento(mut socket: &TcpStream, evento: EventoConexion) -> Result<(), Error>{
+pub fn enviar_evento(mut socket: &TcpStream, evento: EventoConexion) -> Result<(), Error>{
     let evento = evento.to_string().into_bytes();
     socket.write(&evento[..])?;
     socket.flush()?;
     Ok(())
 }
 
-pub fn mandar_mensaje(mut socket: &TcpStream, mensaje: String) -> Result<(), Error>{
+pub fn enviar_mensaje(mut socket: &TcpStream, mensaje: String) -> Result<(), Error>{
     let mensaje = mensaje.into_bytes();
     socket.write(&mensaje[..])?;
     socket.flush()?;

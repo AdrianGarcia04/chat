@@ -1,5 +1,6 @@
 use std::net::{TcpStream, SocketAddr, Shutdown};
 use red::estadocliente::EstadoCliente;
+use std::io::{Error, Write};
 
 pub struct Cliente {
     nombre: Option<String>,
@@ -49,6 +50,13 @@ impl Cliente {
 
     pub fn set_estado(&mut self, estado: EstadoCliente) {
         self.estado = estado;
+    }
+
+    pub fn enviar_mensaje(&mut self, mensaje: &str) -> Result<(), Error> {
+        let mensaje = mensaje.as_bytes();
+        self.socket.write(&mensaje[..])?;
+        self.socket.flush()?;
+        Ok(())
     }
 
     pub fn detener(&mut self) {
