@@ -20,8 +20,8 @@ pub struct Servidor {
 
 impl Servidor {
 
-    pub fn new(ip: &str, puerto: &str) -> Servidor {
-        let direccion = format!("{}:{}", ip, puerto);
+    pub fn new(puerto: &str) -> Servidor {
+        let direccion = format!("0.0.0.0:{}", puerto);
         Servidor {
             direccion: direccion,
             clientes: Arc::new(Mutex::new(Vec::new())),
@@ -35,14 +35,15 @@ impl Servidor {
         let escucha_tcp = match TcpListener::bind(&self.direccion) {
             Ok(escucha) => escucha,
             Err(error) => {
-                panic!("Ocurrió un problema al iniciar el servidor: {:?}", error);
+                error!("Ocurrió un problema al iniciar el servidor: {}", error);
+                panic!("{:?}", error);
             },
         };
 
         self.anunciar_escuchas(EventoServidor::ServidorArriba);
         self.aceptando_conexiones = true;
         escucha_tcp.set_nonblocking(true).expect("Error al inicializar el non-blocking");
-
+        info!(target: "servidor", "Aceptando conexiones en: {}", &self.direccion);
         while self.aceptando_conexiones {
             if let Ok((socket, direccion)) = escucha_tcp.accept() {
                 let mut cliente = self.aceptar_cliente(socket, direccion);
@@ -57,6 +58,7 @@ impl Servidor {
         let cliente = Cliente::new(None, socket, direccion);
         let mut clientes = self.clientes.lock().unwrap();
         clientes.push(cliente.clone());
+        info!(target: "servidor", "Nuevo cliente: {}", direccion);
         cliente
     }
 
@@ -68,8 +70,9 @@ impl Servidor {
                     Ok(_) => {
 
                     },
-                    Err(error) => {
-                        println!("{:?}", error);
+                    Err(_) => {
+                        warn!(target: "servidor", "Se perdió la conexión con el cliente {}, desconectando",
+                                cliente.get_direccion());
                         Servidor::desconectar_cliente(&cliente, &clientes, &salas);
                         break;
                     }
@@ -79,9 +82,11 @@ impl Servidor {
     }
 
     fn detener(&mut self) {
+        info!(target: "servidor", "Desconectando servidor");
         self.matar_clientes();
         self.matar_escuchas();
         self.aceptando_conexiones = false;
+        info!(target: "servidor", "Servidor desconectado");
     }
 
     pub fn nuevo_escucha(&mut self) -> mpsc::Receiver<EventoServidor> {
@@ -94,7 +99,6 @@ impl Servidor {
         for escucha in &self.escuchas {
             &escucha.send(evento.clone());
         }
-        println!("{:?}", evento);
     }
 
     fn matar_escuchas(&mut self) {
