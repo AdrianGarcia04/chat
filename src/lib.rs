@@ -1,6 +1,9 @@
-#[macro_use] extern crate serde_derive;
-extern crate serde;
-extern crate serde_json;
+//! Biblioteca para una aplicación de mensajería por internet, usando el protocolo TCP.
+
+#[macro_use]
+extern crate log;
+
+/// Módulo para la creación de un servidor TCP.
 pub mod red;
 
 #[cfg(test)]
