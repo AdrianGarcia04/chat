@@ -1,6 +1,9 @@
+//! Biblioteca para una aplicación de mensajería por internet, usando el protocolo TCP.
+
 #[macro_use]
 extern crate log;
 
+/// Módulo para la creación de un servidor TCP.
 pub mod red;
 
 #[cfg(test)]

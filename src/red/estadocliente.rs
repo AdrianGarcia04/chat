@@ -2,9 +2,14 @@ use std::str::FromStr;
 use std::fmt;
 
 #[derive(Clone, Debug)]
+/// Estados de los clientes. Los estados definen en qué situación se encuentra
+/// el cliente mientras participa en el chat.
 pub enum EstadoCliente {
+    /// Cuando el usuario está activo en el chat.
     ACTIVE,
+    /// Cuando el usuario está lejos de la computadora.
     AWAY,
+    /// Cuando el usuario está ocupado.
     BUSY,
 }
 
