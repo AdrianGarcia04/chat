@@ -4,6 +4,7 @@ Chat usando el protocolo TCP para el curso de Modelado y Programación
 ## Requisitos
 
 * [Rust](https://www.rust-lang.org/en-US/install.html)
+* [GTK+](https://www.gtk.org/download/linux.php) En su versión 3.20
 
 ## Compilación
 
