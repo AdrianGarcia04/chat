@@ -25,13 +25,13 @@ fn t1_acepta_conexiones() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "No se especificó el nombre".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente1".to_string()),
             Err(_) => assert!(false),
@@ -47,7 +47,7 @@ fn t1_acepta_conexiones() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Ya existe un usuario con ese nombre".to_string()),
             Err(_) => assert!(false),
@@ -76,31 +76,31 @@ fn t2_asignar_estado() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("STATUS")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("STATUS")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "No se especificó el estado".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("STATUS ACTIVE")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("STATUS ACTIVE")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Estado cambiado a: ACTIVE".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("STATUS AWAY")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("STATUS AWAY")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Estado cambiado a: AWAY".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("STATUS BUSY")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("STATUS BUSY")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Estado cambiado a: BUSY".to_string()),
             Err(_) => assert!(false),
@@ -134,7 +134,7 @@ fn t3_obtener_usuarios() {
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente1".to_string()),
             Err(_) => assert!(false),
@@ -151,7 +151,7 @@ fn t3_obtener_usuarios() {
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente2".to_string()),
             Err(_) => assert!(false),
@@ -168,13 +168,13 @@ fn t3_obtener_usuarios() {
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
 
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente3")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente3")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente3".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("USERS")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("USERS")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "cliente1 cliente2 cliente3".to_string()),
             Err(_) => assert!(false),
@@ -205,13 +205,13 @@ fn t4_manda_mensajes_publicos() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente1".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("PUBLICMESSAGE mensaje cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("PUBLICMESSAGE mensaje cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Público-cliente1: mensaje cliente1".to_string()),
             Err(_) => assert!(false),
@@ -224,7 +224,7 @@ fn t4_manda_mensajes_publicos() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente2".to_string()),
             Err(_) => assert!(false),
@@ -263,7 +263,7 @@ fn t5_manda_mensajes_privados() {
 
         thread::sleep(time::Duration::from_secs(2));
 
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente1".to_string()),
             Err(_) => assert!(false),
@@ -283,13 +283,13 @@ fn t5_manda_mensajes_privados() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente2".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("MESSAGE cliente1 Mensaje del cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("MESSAGE cliente1 Mensaje del cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "No se encontró al usuario cliente1".to_string()),
             Err(_) => assert!(false),
@@ -297,7 +297,7 @@ fn t5_manda_mensajes_privados() {
 
         thread::sleep(time::Duration::from_secs(2));
 
-        util::mandar_mensaje(&cliente, String::from("MESSAGE cliente1 Mensaje del cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("MESSAGE cliente1 Mensaje del cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "cliente2: Mensaje del cliente2".to_string()),
             Err(_) => assert!(false),
@@ -326,25 +326,25 @@ fn t6_crea_salas() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("CREATEROOM")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("CREATEROOM")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "No se especificó el nombre de la sala".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Creación de la sala S1 exitosa".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Ya existe una sala con ese nombre".to_string()),
             Err(_) => assert!(false),
@@ -375,13 +375,13 @@ fn t7_enviar_invitaciones() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente1".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Creación de la sala S1 exitosa".to_string()),
             Err(_) => assert!(false),
@@ -389,7 +389,7 @@ fn t7_enviar_invitaciones() {
 
         thread::sleep(time::Duration::from_secs(1));
 
-        util::mandar_mensaje(&cliente, String::from("INVITE S1 cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("INVITE S1 cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Invitaciones de la sala S1 enviadas".to_string()),
             Err(_) => assert!(false),
@@ -402,7 +402,7 @@ fn t7_enviar_invitaciones() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente2".to_string()),
             Err(_) => assert!(false),
@@ -440,13 +440,13 @@ fn t8_aceptar_invitacion() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente1".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Creación de la sala S1 exitosa".to_string()),
             Err(_) => assert!(false),
@@ -454,7 +454,7 @@ fn t8_aceptar_invitacion() {
 
         thread::sleep(time::Duration::from_secs(2));
 
-        util::mandar_mensaje(&cliente, String::from("INVITE S1 cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("INVITE S1 cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Invitaciones de la sala S1 enviadas".to_string()),
             Err(_) => assert!(false),
@@ -474,7 +474,7 @@ fn t8_aceptar_invitacion() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente2".to_string()),
             Err(_) => assert!(false),
@@ -482,7 +482,7 @@ fn t8_aceptar_invitacion() {
 
         thread::sleep(time::Duration::from_secs(1));
 
-        util::mandar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "No estás invitado para unirte".to_string()),
             Err(_) => assert!(false),
@@ -495,7 +495,7 @@ fn t8_aceptar_invitacion() {
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "cliente2 se unió a la sala S1".to_string()),
             Err(_) => assert!(false),
@@ -528,13 +528,13 @@ fn t9_manda_mensaje_sala() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente1".to_string()),
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("CREATEROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Creación de la sala S1 exitosa".to_string()),
             Err(_) => assert!(false),
@@ -542,7 +542,7 @@ fn t9_manda_mensaje_sala() {
 
         thread::sleep(time::Duration::from_secs(3));
 
-        util::mandar_mensaje(&cliente, String::from("INVITE S1 cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("INVITE S1 cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Invitaciones de la sala S1 enviadas".to_string()),
             Err(_) => assert!(false),
@@ -555,7 +555,7 @@ fn t9_manda_mensaje_sala() {
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("ROOMESSAGE S1 Mensaje S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("ROOMESSAGE S1 Mensaje S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "S1-cliente1: Mensaje S1".to_string()),
             Err(_) => assert!(false),
@@ -568,7 +568,7 @@ fn t9_manda_mensaje_sala() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente2")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente2".to_string()),
             Err(_) => assert!(false),
@@ -576,7 +576,7 @@ fn t9_manda_mensaje_sala() {
 
         thread::sleep(time::Duration::from_secs(2));
 
-        util::mandar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "No estás invitado para unirte".to_string()),
             Err(_) => assert!(false),
@@ -589,7 +589,7 @@ fn t9_manda_mensaje_sala() {
             Err(_) => assert!(false),
         };
 
-        util::mandar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("JOINROOM S1")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "cliente2 se unió a la sala S1".to_string()),
             Err(_) => assert!(false),
@@ -607,7 +607,7 @@ fn t9_manda_mensaje_sala() {
 
         let cliente = TcpStream::connect("127.0.0.1:".to_string() + puerto)
             .expect("Error al conectar");
-        util::mandar_mensaje(&cliente, String::from("IDENTIFY cliente3")).unwrap();
+        util::enviar_mensaje(&cliente, String::from("IDENTIFY cliente3")).unwrap();
         match util::obtener_mensaje_conexion(&cliente) {
             Ok(mensaje) => assert_eq!(mensaje, "Nombre cambiado a: cliente3".to_string()),
             Err(_) => assert!(false),
